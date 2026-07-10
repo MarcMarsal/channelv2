@@ -1,4 +1,4 @@
-// db/saveSignalChannels.js — FIAT‑PRO CHANNELS
+// db/saveSignalChannels.js — FIAT‑PRO CHANNEL SIGNALS
 
 import { client } from "./client.js";
 import { splitSpainDate } from "../core/utils.js";
@@ -14,7 +14,6 @@ export async function saveSignalChannels({
   timestamp,
   color,
 
-  // dades del canal FIAT
   slope,
   intercept,
   endy,
