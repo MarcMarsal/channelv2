@@ -20,7 +20,7 @@ const server = http.createServer(async (req, res) => {
     <html>
     <head>
       <title>FIAT-PRO Channels</title>
-      <meta http-equiv="refresh" content="5">
+      <meta http-equiv="refresh" content="60">
       <style>
         body { font-family: Arial; background: #111; color: #eee; }
         table { width: 100%; border-collapse: collapse; }
