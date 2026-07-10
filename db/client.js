@@ -1,7 +1,5 @@
-// db/client.js — FIAT‑PRO
-
-import pg from "pg";
-const { Client } = pg;
+// db/client.js
+import { Client } from "pg";
 
 export const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -10,4 +8,5 @@ export const client = new Client({
 
 export async function initDB() {
   await client.connect();
+  console.log("PostgreSQL connectat (2.0)");
 }
