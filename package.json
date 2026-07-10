@@ -1,1 +1,30 @@
-test
+{
+  "name": "channels-upgraded-bot",
+  "version": "1.0.0",
+  "description": "FIAT linear regression channels bot (Railway + PostgreSQL + Telegram + OKX)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.3",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5",
+    "morgan": "^1.10.0",
+
+    "node-telegram-bot-api": "^0.64.0",
+
+    "@okx/api": "^1.0.0",
+
+    "dayjs": "^1.11.11",
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4",
+    "eslint": "^9.7.1"
+  }
+}
