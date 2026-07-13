@@ -69,10 +69,18 @@ async function getChannels() {
 function renderChannelValidationTable(channels) {
   let rows = "";
 
+  const k = 0.8;   // factor corrector visual
+
   for (const ch of channels) {
-    const upper = ch.endy + ch.dev * ch.devlen;
-    const mid   = ch.endy;
-    const lower = ch.endy - ch.dev * ch.devlen;
+
+    // Canal matemàtic pur del bot
+    const upper_raw = ch.endy + ch.dev * ch.devlen;
+    const lower_raw = ch.endy - ch.dev * ch.devlen;
+    const mid = ch.endy;
+
+    // Canal corregit visualment (aproximació TradingView)
+    const upper = mid + (upper_raw - mid) * k;
+    const lower = mid + (lower_raw - mid) * k;
 
     rows += `
       <tr>
@@ -85,13 +93,8 @@ function renderChannelValidationTable(channels) {
   }
 
   return `
-    <h2>Mode Validació (última vela tancada)</h2>
-    <p>Dibuixa 3 línies horitzontals a TradingView a la última vela tancada:</p>
-    <ul>
-      <li>Upper</li>
-      <li>Mid</li>
-      <li>Lower</li>
-    </ul>
+    <h2>Mode Validació (canal aproximat a TradingView)</h2>
+    <p>Upper i Lower estan corregits amb k = 0.8 per semblar-se més a TradingView.</p>
 
     <table>
       <thead>
