@@ -9,7 +9,6 @@ import { getChannelFIAT } from "./core/channelEngine.js";
 import { detectChannelEntry } from "./core/channelSignals.js";
 import { classifyChannel } from "./core/channelClassifier.js";
 
-
 // -------------------------------------------------------------
 // UNIVERS FIAT‑PRO (igual que bot de patrons)
 // -------------------------------------------------------------
@@ -25,7 +24,7 @@ const ACTIVE_CRYPTOS = UNIVERSE;
 const TIMEFRAMES = ["1H"];
 
 // -------------------------------------------------------------
-// LLEGIR VELAS DE LA DB (igual estil que bot de patrons)
+// LLEGIR VELAS DE LA DB
 // -------------------------------------------------------------
 async function getCandlesFromDB(symbol, timeframe, limit) {
   const res = await client.query(
@@ -50,13 +49,16 @@ export async function processSymbol(symbol, timeframe) {
   if (!candles || candles.length < 120) return;
 
   candles.sort((a, b) => a.timestamp - b.timestamp);
+  const lastCandle = candles[candles.length - 1];
 
   // 1) Calcular canal FIAT (LonesomeTheBlue)
   const channel = getChannelFIAT(candles);
   if (!channel) return;
 
+  // 2) Classificar canal FIAT‑PRO (upper/lower/k + operabilitat)
   const classification = classifyChannel(channel);
 
+  // 3) Guardar canal FIAT‑PRO complet
   await saveChannel({
     symbol,
     timeframe,
@@ -75,35 +77,18 @@ export async function processSymbol(symbol, timeframe) {
     timestamp: lastCandle.timestamp
   });
 
-  // Si el canal NO és operable → NO hi ha senyal
+  // 4) Si el canal NO és operable → NO hi ha senyal
   if (!classification.operable) return;
 
-
-  const lastCandle = candles[candles.length - 1];
-
-  // 2) Guardar canal a la BD (per panell + comparació TradingView)
-  await saveChannel({
-    symbol,
-    timeframe,
-    slope: channel.slope,
-    intercept: channel.intercept,
-    endy: channel.endy,
-    dev: channel.dev,
-    devlen: channel.devlen,
-    mid: channel.mid,
-    len: channel.len,
-    timestamp: lastCandle.timestamp
-  });
-
-  // 3) Detectar entrada FIAT (sobreextensió)
+  // 5) Detectar entrada FIAT (sobreextensió)
   const entry = detectChannelEntry(candles);
   if (!entry) return;
 
-  // 4) Evitar duplicats de senyal
+  // 6) Evitar duplicats de senyal
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (exists) return;
 
-  // 5) Guardar senyal FIAT‑PRO + Telegram
+  // 7) Guardar senyal FIAT‑PRO + Telegram
   await saveSignalChannels({
     symbol,
     timeframe,
@@ -125,7 +110,7 @@ export async function processSymbol(symbol, timeframe) {
 }
 
 // -------------------------------------------------------------
-// LOOP PRINCIPAL FIAT‑PRO (sense baixar veles)
+// LOOP PRINCIPAL FIAT‑PRO
 // -------------------------------------------------------------
 async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
