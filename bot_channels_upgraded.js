@@ -78,17 +78,16 @@ export async function processSymbol(symbol, timeframe) {
   });
 
   // 4) Si el canal NO és operable → NO hi ha senyal
-  if (!classification.operable) return;
-
-  // 5) Detectar entrada FIAT (sobreextensió)
+  // 4) FIAT‑PRO: si el canal NO és operable → igualment generem alerta,
+  // però amb la raó de cancel·lació (per validació i panell)
   const entry = detectChannelEntry(candles);
   if (!entry) return;
 
-  // 6) Evitar duplicats de senyal
+  // 5) Evitar duplicats de senyal
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (exists) return;
 
-  // 7) Guardar senyal FIAT‑PRO + Telegram
+  // 6) Guardar senyal FIAT‑PRO + Telegram
   await saveSignalChannels({
     symbol,
     timeframe,
@@ -105,8 +104,13 @@ export async function processSymbol(symbol, timeframe) {
     dev: channel.dev,
     devlen: channel.devlen,
     mid: channel.mid,
-    len: channel.len
+    len: channel.len,
+
+    // NOVETAT: si no operable → guardar raó
+    reason: classification.operable ? null : classification.reason,
+    operable: classification.operable
   });
+
 }
 
 // -------------------------------------------------------------
