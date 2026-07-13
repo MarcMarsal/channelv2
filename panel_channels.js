@@ -70,42 +70,36 @@ function renderChannelValidationTable(channels) {
   let rows = "";
 
   for (const ch of channels) {
-    const upperA = { x: 0, y: ch.intercept + ch.dev };
-    const upperB = { x: ch.len - 1, y: ch.endy + ch.dev };
-
-    const midA   = { x: 0, y: ch.intercept };
-    const midB   = { x: ch.len - 1, y: ch.endy };
-
-    const lowerA = { x: 0, y: ch.intercept - ch.dev };
-    const lowerB = { x: ch.len - 1, y: ch.endy - ch.dev };
+    const upper = ch.endy + ch.dev * ch.devlen;
+    const mid   = ch.endy;
+    const lower = ch.endy - ch.dev * ch.devlen;
 
     rows += `
       <tr>
         <td>${ch.symbol}</td>
-        <td>${fmt(upperA.y)}</td>
-        <td>${fmt(upperB.y)}</td>
-        <td>${fmt(midA.y)}</td>
-        <td>${fmt(midB.y)}</td>
-        <td>${fmt(lowerA.y)}</td>
-        <td>${fmt(lowerB.y)}</td>
+        <td>${fmt(upper)}</td>
+        <td>${fmt(mid)}</td>
+        <td>${fmt(lower)}</td>
       </tr>
     `;
   }
 
   return `
-    <h2>Mode Validació de Canals (6 punts per dibuixar rectes)</h2>
-    <p>Traça les rectes a TradingView amb aquests punts. Han de coincidir amb el canal.</p>
+    <h2>Mode Validació (última vela tancada)</h2>
+    <p>Dibuixa 3 línies horitzontals a TradingView a la última vela tancada:</p>
+    <ul>
+      <li>Upper</li>
+      <li>Mid</li>
+      <li>Lower</li>
+    </ul>
 
     <table>
       <thead>
         <tr>
           <th>Symbol</th>
-          <th>Upper A (y)</th>
-          <th>Upper B (y)</th>
-          <th>Mid A (y)</th>
-          <th>Mid B (y)</th>
-          <th>Lower A (y)</th>
-          <th>Lower B (y)</th>
+          <th>Upper</th>
+          <th>Mid</th>
+          <th>Lower</th>
         </tr>
       </thead>
       <tbody>
