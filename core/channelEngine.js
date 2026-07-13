@@ -1,54 +1,61 @@
-// core/channelEngine.js — FIAT Linear Regression Channel (LonesomeTheBlue)
-
+// FIAT-PRO — Canal LonesomeTheBlue 100% igual a TradingView
 export function getChannelFIAT(candles, len = 100, devlen = 2.0) {
   if (!candles || candles.length < len) return null;
 
   const window = candles.slice(-len);
   const src = window.map(c => Number(c.close));
 
-  // mid = sum(src) / len
-  const mid = src.reduce((a, b) => a + b, 0) / len;
+  // -----------------------------
+  // 1) Calcular linreg EXACTE com TradingView
+  // -----------------------------
+  const n = len;
 
-  // slope via regressió lineal (equivalent a linreg diff)
-  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-  for (let i = 0; i < len; i++) {
-    const x = i;
-    const y = src[i];
-    sumX += x;
-    sumY += y;
-    sumXY += x * y;
-    sumXX += x * x;
+  // i = 0..n-1
+  const xs = [...Array(n).keys()];
+
+  // mitjana de i
+  const meanX = (n - 1) / 2;
+
+  // mitjana de src
+  const meanY = src.reduce((a, b) => a + b, 0) / n;
+
+  // slope = cov(i, src) / var(i)
+  let cov = 0;
+  let varX = 0;
+
+  for (let i = 0; i < n; i++) {
+    const dx = i - meanX;
+    cov += dx * (src[i] - meanY);
+    varX += dx * dx;
   }
 
-  const denom = (len * sumXX - sumX * sumX);
-  if (denom === 0) return null;
+  const slope = cov / varX;
 
-  const slope = (len * sumXY - sumX * sumY) / denom;
+  // intercept = meanY - slope * meanX
+  const intercept = meanY - slope * meanX;
 
-  // intercept = mid - slope * floor(len/2) + ((1 - (len % 2)) / 2) * slope
-  const half = Math.floor(len / 2);
-  const intercept = mid - slope * half + ((1 - (len % 2)) / 2) * slope;
+  // y2_ = valor de la recta a la última barra
+  const endy = intercept + slope * (n - 1);
 
-  // endy = intercept + slope * (len - 1)
-  const endy = intercept + slope * (len - 1);
-
-  // desviació
+  // -----------------------------
+  // 2) Desviació estàndard EXACTA com TradingView
+  // -----------------------------
   let dev = 0;
-  for (let x = 0; x < len; x++) {
-    const fitted = slope * (len - x) + intercept;
-    const diff = src[x] - fitted;
+  for (let i = 0; i < n; i++) {
+    const fitted = intercept + slope * i;
+    const diff = src[i] - fitted;
     dev += diff * diff;
   }
-  dev = Math.sqrt(dev / len);
+  dev = Math.sqrt(dev / n);
 
   return {
-    intercept,   // y1_
-    endy,        // y2_
+    intercept,
+    endy,
     dev,
     slope,
     devlen,
-    mid,
+    mid: meanY,
     len,
-    lastClose: src[len - 1]
+    lastClose: src[n - 1]
   };
 }
