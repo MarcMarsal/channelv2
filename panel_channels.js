@@ -44,7 +44,7 @@ async function getActiveSignals() {
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
-    SELECT
+    SELECT DISTINCT ON (symbol)
       symbol,
       timeframe,
       slope,
@@ -56,11 +56,12 @@ async function getChannels() {
       len,
       timestamp
     FROM channels_fiat
-    ORDER BY symbol ASC
+    ORDER BY symbol, timestamp DESC
   `);
 
   return q.rows;
 }
+
 
 // -------------------------------------------------------------
 // TAULA DE VALIDACIÓ (6 punts per dibuixar rectes)
