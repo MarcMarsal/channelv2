@@ -55,7 +55,7 @@ async function getChannels() {
       mid,
       len,
       timestamp
-    FROM channels
+    FROM channels_fiat
     ORDER BY symbol ASC
   `);
 
