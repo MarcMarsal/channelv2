@@ -1,7 +1,8 @@
 // core/channelClassifier.js — FIAT‑PRO canal + operabilitat (slope percentual)
 
 export function classifyChannel(channel) {
-  const k = 0.8;
+  //const k = 0.8;
+  const k = 1;
 
   // Canal matemàtic pur
   const upper_raw = channel.endy + channel.dev * channel.devlen;
