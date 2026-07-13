@@ -7,6 +7,8 @@ import { saveSignalChannels } from "./db/saveSignalChannels.js";
 import { saveChannel } from "./db/saveChannel.js";
 import { getChannelFIAT } from "./core/channelEngine.js";
 import { detectChannelEntry } from "./core/channelSignals.js";
+import { classifyChannel } from "./core/channelClassifier.js";
+
 
 // -------------------------------------------------------------
 // UNIVERS FIAT‑PRO (igual que bot de patrons)
@@ -52,6 +54,30 @@ export async function processSymbol(symbol, timeframe) {
   // 1) Calcular canal FIAT (LonesomeTheBlue)
   const channel = getChannelFIAT(candles);
   if (!channel) return;
+
+  const classification = classifyChannel(channel);
+
+  await saveChannel({
+    symbol,
+    timeframe,
+    slope: channel.slope,
+    intercept: channel.intercept,
+    endy: channel.endy,
+    dev: channel.dev,
+    devlen: channel.devlen,
+    mid: channel.mid,
+    len: channel.len,
+    upper: classification.upper,
+    lower: classification.lower,
+    k: classification.k,
+    operable: classification.operable,
+    reason: classification.reason,
+    timestamp: lastCandle.timestamp
+  });
+
+  // Si el canal NO és operable → NO hi ha senyal
+  if (!classification.operable) return;
+
 
   const lastCandle = candles[candles.length - 1];
 
