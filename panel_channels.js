@@ -1,11 +1,18 @@
+// panel_channels.js — FIAT‑PRO (amb mode validació ON/OFF)
+
 import http from "http";
 import { initDB, client } from "./db/client.js";
 import { formatSpainTime } from "./core/utils.js";
+
+const VALIDATION_MODE = process.env.CHANNEL_VALIDATION_MODE === "true";
 
 function fmt(n) {
   return n !== null && n !== undefined ? Number(n).toFixed(4) : "-";
 }
 
+// -------------------------------------------------------------
+// LLEGIR ÚLTIMES ALERTES FIAT‑PRO
+// -------------------------------------------------------------
 async function getActiveSignals() {
   const q = await client.query(`
     SELECT
@@ -32,6 +39,84 @@ async function getActiveSignals() {
   return q.rows;
 }
 
+// -------------------------------------------------------------
+// LLEGIR CANALS GUARDATS (per mode validació)
+// -------------------------------------------------------------
+async function getChannels() {
+  const q = await client.query(`
+    SELECT
+      symbol,
+      timeframe,
+      slope,
+      intercept,
+      endy,
+      dev,
+      devlen,
+      mid,
+      len,
+      timestamp
+    FROM channels
+    ORDER BY symbol ASC
+  `);
+
+  return q.rows;
+}
+
+// -------------------------------------------------------------
+// TAULA DE VALIDACIÓ (6 punts per dibuixar rectes)
+// -------------------------------------------------------------
+function renderChannelValidationTable(channels) {
+  let rows = "";
+
+  for (const ch of channels) {
+    const upperA = { x: 0, y: ch.intercept + ch.dev };
+    const upperB = { x: ch.len - 1, y: ch.endy + ch.dev };
+
+    const midA   = { x: 0, y: ch.intercept };
+    const midB   = { x: ch.len - 1, y: ch.endy };
+
+    const lowerA = { x: 0, y: ch.intercept - ch.dev };
+    const lowerB = { x: ch.len - 1, y: ch.endy - ch.dev };
+
+    rows += `
+      <tr>
+        <td>${ch.symbol}</td>
+        <td>${fmt(upperA.y)}</td>
+        <td>${fmt(upperB.y)}</td>
+        <td>${fmt(midA.y)}</td>
+        <td>${fmt(midB.y)}</td>
+        <td>${fmt(lowerA.y)}</td>
+        <td>${fmt(lowerB.y)}</td>
+      </tr>
+    `;
+  }
+
+  return `
+    <h2>Mode Validació de Canals (6 punts per dibuixar rectes)</h2>
+    <p>Traça les rectes a TradingView amb aquests punts. Han de coincidir amb el canal.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Upper A (y)</th>
+          <th>Upper B (y)</th>
+          <th>Mid A (y)</th>
+          <th>Mid B (y)</th>
+          <th>Lower A (y)</th>
+          <th>Lower B (y)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+// -------------------------------------------------------------
+// TAULA D'ALERTES FIAT‑PRO
+// -------------------------------------------------------------
 function renderActiveSignalsTable(signals) {
   let rows = "";
 
@@ -85,6 +170,9 @@ function renderActiveSignalsTable(signals) {
   `;
 }
 
+// -------------------------------------------------------------
+// PANELL PRINCIPAL
+// -------------------------------------------------------------
 async function startPanel() {
   await initDB();
 
@@ -92,6 +180,13 @@ async function startPanel() {
     if (req.url === "/") {
       const signals = await getActiveSignals();
       const signalsHTML = renderActiveSignalsTable(signals);
+
+      let validationHTML = "";
+      if (VALIDATION_MODE) {
+        const channels = await getChannels();
+        validationHTML = renderChannelValidationTable(channels);
+      }
+
       const lastUpdate = formatSpainTime(Date.now());
 
       const html = `
@@ -125,6 +220,7 @@ async function startPanel() {
         <h1>Panell FIAT‑PRO Channels</h1>
         <p><b>Última actualització:</b> ${lastUpdate}</p>
 
+        ${VALIDATION_MODE ? validationHTML : ""}
         ${signalsHTML}
 
       </body>
