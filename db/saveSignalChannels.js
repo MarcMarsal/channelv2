@@ -20,7 +20,11 @@ export async function saveSignalChannels({
   dev,
   devlen,
   mid,
-  len
+  len,
+
+  // 🔥 NOVETAT FIAT‑PRO
+  operable,
+  reason
 }) {
   const tsMs = Number(timestamp);
   const createdAt = Date.now();
@@ -35,7 +39,8 @@ export async function saveSignalChannels({
       timestamp, timestamp_ms,
       date_es, hora_es, timestamp_es,
       created_at, closed,
-      slope, intercept, endy, dev, devlen, mid, len
+      slope, intercept, endy, dev, devlen, mid, len,
+      operable, reason
     )
     VALUES (
       $1,$2,$3,$4,
@@ -43,7 +48,8 @@ export async function saveSignalChannels({
       $8,$9,
       $10,$11,$12,
       $13,false,
-      $14,$15,$16,$17,$18,$19,$20
+      $14,$15,$16,$17,$18,$19,$20,
+      $21,$22
     )
     ON CONFLICT DO NOTHING
     `,
@@ -53,7 +59,8 @@ export async function saveSignalChannels({
       tsMs, tsMs,
       date_es, hora_es, timestamp_es,
       createdAt,
-      slope, intercept, endy, dev, devlen, mid, len
+      slope, intercept, endy, dev, devlen, mid, len,
+      operable, reason
     ]
   );
 
@@ -65,6 +72,9 @@ export async function saveSignalChannels({
     color,
     entry: Number(entry).toFixed(4),
     tp: Number(tp).toFixed(4),
-    sl: Number(sl).toFixed(4)
+    sl: Number(sl).toFixed(4),
+
+    // 🔥 NOVETAT: si no operable → afegim la raó al missatge
+    reason: operable ? "-" : reason
   });
 }
