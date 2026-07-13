@@ -1,10 +1,8 @@
-// panel_channels.js — FIAT‑PRO (amb mode validació ON/OFF)
+// panel_channels.js — FIAT‑PRO (sense mode validació)
 
 import http from "http";
 import { initDB, client } from "./db/client.js";
 import { formatSpainTime } from "./core/utils.js";
-
-const VALIDATION_MODE = process.env.CHANNEL_VALIDATION_MODE === "true";
 
 function fmt(n) {
   return n !== null && n !== undefined ? Number(n).toFixed(4) : "-";
@@ -40,7 +38,7 @@ async function getActiveSignals() {
 }
 
 // -------------------------------------------------------------
-// LLEGIR CANALS GUARDATS (per mode validació)
+// LLEGIR ÚLTIMS CANALS FIAT‑PRO (un per symbol)
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
@@ -54,6 +52,11 @@ async function getChannels() {
       devlen,
       mid,
       len,
+      upper,
+      lower,
+      k,
+      operable,
+      reason,
       timestamp
     FROM channels_fiat
     ORDER BY symbol, timestamp DESC
@@ -62,39 +65,34 @@ async function getChannels() {
   return q.rows;
 }
 
-
 // -------------------------------------------------------------
-// TAULA DE VALIDACIÓ (6 punts per dibuixar rectes)
+// TAULA DE CANALS FIAT‑PRO
 // -------------------------------------------------------------
-function renderChannelValidationTable(channels) {
+function renderChannelsTable(channels) {
   let rows = "";
 
-  const k = 0.8;   // factor corrector visual
-
   for (const ch of channels) {
-
-    // Canal matemàtic pur del bot
-    const upper_raw = ch.endy + ch.dev * ch.devlen;
-    const lower_raw = ch.endy - ch.dev * ch.devlen;
-    const mid = ch.endy;
-
-    // Canal corregit visualment (aproximació TradingView)
-    const upper = mid + (upper_raw - mid) * k;
-    const lower = mid + (lower_raw - mid) * k;
+    const color = ch.operable ? "lime" : "red";
 
     rows += `
-      <tr>
+      <tr style="color:${color}">
         <td>${ch.symbol}</td>
-        <td>${fmt(upper)}</td>
-        <td>${fmt(mid)}</td>
-        <td>${fmt(lower)}</td>
+        <td>${fmt(ch.upper)}</td>
+        <td>${fmt(ch.mid)}</td>
+        <td>${fmt(ch.lower)}</td>
+        <td>${fmt(ch.k)}</td>
+        <td>${fmt(ch.slope)}</td>
+        <td>${fmt(ch.dev)}</td>
+        <td>${fmt(ch.devlen)}</td>
+        <td>${fmt(ch.len)}</td>
+        <td>${ch.operable ? "OPERABLE" : "NO"}</td>
+        <td>${ch.reason || "-"}</td>
       </tr>
     `;
   }
 
   return `
-    <h2>Mode Validació (canal aproximat a TradingView)</h2>
-    <p>Upper i Lower estan corregits amb k = 0.8 per semblar-se més a TradingView.</p>
+    <h2>Canals FIAT‑PRO (últim per cada cripto)</h2>
 
     <table>
       <thead>
@@ -103,6 +101,13 @@ function renderChannelValidationTable(channels) {
           <th>Upper</th>
           <th>Mid</th>
           <th>Lower</th>
+          <th>K</th>
+          <th>Slope</th>
+          <th>Dev</th>
+          <th>DevLen</th>
+          <th>Len</th>
+          <th>Operable</th>
+          <th>Reason</th>
         </tr>
       </thead>
       <tbody>
@@ -177,13 +182,10 @@ async function startPanel() {
   http.createServer(async (req, res) => {
     if (req.url === "/") {
       const signals = await getActiveSignals();
-      const signalsHTML = renderActiveSignalsTable(signals);
+      const channels = await getChannels();
 
-      let validationHTML = "";
-      if (VALIDATION_MODE) {
-        const channels = await getChannels();
-        validationHTML = renderChannelValidationTable(channels);
-      }
+      const signalsHTML = renderActiveSignalsTable(signals);
+      const channelsHTML = renderChannelsTable(channels);
 
       const lastUpdate = formatSpainTime(Date.now());
 
@@ -218,7 +220,7 @@ async function startPanel() {
         <h1>Panell FIAT‑PRO Channels</h1>
         <p><b>Última actualització:</b> ${lastUpdate}</p>
 
-        ${VALIDATION_MODE ? validationHTML : ""}
+        ${channelsHTML}
         ${signalsHTML}
 
       </body>
