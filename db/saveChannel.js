@@ -1,4 +1,4 @@
-// db/saveChannel.js — FIAT‑PRO CHANNELS (amb K integrada)
+// db/saveChannel.js — FIAT‑PRO CHANNELS (amb upper/lower/k)
 
 import { client } from "./client.js";
 
