@@ -64,17 +64,17 @@ export async function saveSignalChannels({
     ]
   );
 
-  await sendTelegram({
-    bot: "FIAT-PRO CHANNELS",
-    symbol,
-    timeframe,
-    signalType: type,
-    color,
-    entry: Number(entry).toFixed(4),
-    tp: Number(tp).toFixed(4),
-    sl: Number(sl).toFixed(4),
+  //await sendTelegram({
+  //  bot: "FIAT-PRO CHANNELS",
+  //  symbol,
+  //  timeframe,
+  //  signalType: type,
+  //  color,
+  //  entry: Number(entry).toFixed(4),
+  //  tp: Number(tp).toFixed(4),
+  //  sl: Number(sl).toFixed(4),
 
     // 🔥 NOVETAT: si no operable → afegim la raó al missatge
-    reason: operable ? "-" : reason
-  });
+  //  reason: operable ? "-" : reason
+  //});
 }
