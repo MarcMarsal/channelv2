@@ -37,24 +37,29 @@ async function getActiveSignals() {
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
-    SELECT DISTINCT ON (symbol)
+    SELECT
       symbol,
+      open,
+      close,
+      upper,
+      mid,
+      lower,
       slope,
-      intercept,
       dev,
       devlen,
-      mid,
-      upper,
-      lower,
       operable,
       reason,
-      timestamp
+      accio,
+      timestamp,
+      data_es,
+      hora_es
     FROM channels_fiat
     ORDER BY symbol, timestamp DESC
   `);
 
   return q.rows;
 }
+
 
 
 // -------------------------------------------------------------
