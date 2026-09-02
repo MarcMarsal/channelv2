@@ -65,7 +65,7 @@ export async function processSymbolFIAT( symbol, candles) {
 
     const accio = calcularAccioFIAT(open, close, canal.upper, canal.lower);
 
-    await db.query(`
+    await client.query(`
         INSERT INTO channels_fiat (
             symbol, timestamp, data_es, hora_es,
             open, close,
@@ -90,7 +90,7 @@ export async function processSymbolFIAT( symbol, candles) {
     ]);
 
     if (accio !== "") {
-        await generarSenyalFIAT(db, symbol, ts, accio, open, close, canal.upper, canal.lower);
+        await generarSenyalFIAT(symbol, ts, accio, open, close, canal.upper, canal.lower);
     }
 }
 
@@ -103,7 +103,7 @@ async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
     try {
       const candles = await getCandlesFromDB(symbol, "15m", 200);
-      await processSymbolFIAT(client, symbol, candles);
+      await processSymbolFIAT(symbol, candles);
     } catch (err) {
       console.log("Error processant", symbol, err.message);
     }
