@@ -106,12 +106,14 @@ export async function processSymbolFIAT(db, symbol, candles) {
 async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
     try {
-      await processSymbol(symbol, "15m");
+      const candles = await getCandlesFromDB(symbol, "15m", 200);
+      await processSymbolFIAT(client, symbol, candles);
     } catch (err) {
       console.log("Error processant", symbol, err.message);
     }
   }
 }
+
 
 // -------------------------------------------------------------
 // START BOT
