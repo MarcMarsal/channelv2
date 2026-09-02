@@ -112,6 +112,7 @@ if (stage === 1 && sig?.reingres) {
     `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
+  return; 
 }
 
 // --- Stage 2: ENTRADA FIAT ---
