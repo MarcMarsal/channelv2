@@ -1,50 +1,61 @@
 // core/channelSignals.js — FIAT 15m (punxada + reingrés + entrada)
 
-export function detectChannelEntry(candles, channel) {
-  // FIAT-safe: mai retornem null
-  if (!candles || candles.length < channel.len) {
+export function detectChannelEntry(candles, channel, stage) {
+  // stage pot ser:
+  // "neutral" | "breakoutUpper" | "breakoutLower" | "reingresUpper" | "reingresLower"
+
+  if (!candles || candles.length === 0) {
     return {
-      punxada: false,
+      breakout: false,
       reingres: false,
       entrada: false,
-      side: null
+      side: null,
+      stage
     };
   }
 
   const last = candles[candles.length - 1];
-  const prev = candles[candles.length - 2];
-
   const { upper, lower, mid } = channel;
 
-  // 1) PUNXADA FIAT
-  const punxadaLower = last.low < lower && prev.low >= lower;
-  const punxadaUpper = last.high > upper && prev.high <= upper;
-  const punxada = punxadaLower || punxadaUpper;
-
-  // 2) REINGRÉS FIAT
-  const reingresLower = prev.low < lower && last.close > lower && last.close < mid;
-  const reingresUpper = prev.high > upper && last.close < upper && last.close > mid;
-  const reingres = reingresLower || reingresUpper;
-
-  // 3) ENTRADA FIAT
-  const entradaLower = prev.close > lower && last.close > lower && last.close < mid;
-  const entradaUpper = prev.close < upper && last.close < upper && last.close > mid;
-  const entrada = entradaLower || entradaUpper;
-
-  // 4) SIDE FIAT
+  let breakout = false;
+  let reingres = false;
+  let entrada = false;
   let side = null;
-  if (punxadaLower || reingresLower || entradaLower) side = "lower";
-  if (punxadaUpper || reingresUpper || entradaUpper) side = "upper";
 
-  // FIAT-safe: side mai pot ser null
-  if (!side) {
-    side = last.close < mid ? "lower" : "upper";
+  // 1️⃣ TRENCAMENT DEL CANAL (alerta)
+  if (last.close > upper) {
+    breakout = true;
+    stage = "breakoutUpper";
+  } else if (last.close < lower) {
+    breakout = true;
+    stage = "breakoutLower";
+  }
+
+  // 2️⃣ REINGRÉS (alerta)
+  if (stage === "breakoutUpper" && last.close < upper) {
+    reingres = true;
+    stage = "reingresUpper";
+  } else if (stage === "breakoutLower" && last.close > lower) {
+    reingres = true;
+    stage = "reingresLower";
+  }
+
+  // 3️⃣ ENTRADA (trade)
+  if (stage === "reingresUpper" && last.close < mid) {
+    entrada = true;
+    side = "SHORT";
+    stage = "neutral";
+  } else if (stage === "reingresLower" && last.close > mid) {
+    entrada = true;
+    side = "LONG";
+    stage = "neutral";
   }
 
   return {
-    punxada,
+    breakout,
     reingres,
     entrada,
-    side
+    side,
+    stage
   };
 }
