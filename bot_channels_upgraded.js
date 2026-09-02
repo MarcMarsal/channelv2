@@ -53,14 +53,14 @@ export async function processSymbol(symbol, timeframe) {
   candles.sort((a, b) => a.timestamp - b.timestamp);
   const lastCandle = candles[candles.length - 1];
 
-  // 1) Calcular canal FIAT
+  // 1) Canal FIAT
   const channel = getChannelFIAT(candles);
   if (!channel) return;
 
-  // 2) Classificar canal
+  // 2) Classificació
   const classification = classifyChannel(channel);
 
-  // 3) Guardar canal FIAT
+  // 3) Guardar canal
   await saveChannel({
     symbol,
     timeframe,
@@ -79,11 +79,7 @@ export async function processSymbol(symbol, timeframe) {
     timestamp: lastCandle.timestamp
   });
 
-  // -------------------------------------------------------------
-  // 4) STAGE BREAKOUT → REINGRÉS → ENTRADA
-  // -------------------------------------------------------------
-
-  // Carregar stage actual
+  // 4) STAGE
   let stageRes = await client.query(
     `SELECT stage FROM channel_stage WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
@@ -92,10 +88,9 @@ export async function processSymbol(symbol, timeframe) {
   let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
   if (stage === null) stage = 0;
 
-  // Detectar breakout / reingrés / entrada
   const sig = detectChannelEntry(candles, channel, stage);
 
-  // --- STAGE 0: TRENCAMENT DEL CANAL ---
+  // --- STAGE 0: BREAKOUT ---
   if (stage === 0 && sig.breakout) {
     await client.query(
       `INSERT INTO channel_stage(symbol, timeframe, stage)
@@ -104,7 +99,6 @@ export async function processSymbol(symbol, timeframe) {
       [symbol, timeframe, 1]
     );
 
-    // ALERTA DE TRENCAMENT (sense trade)
     const alert = {
       symbol,
       timeframe,
@@ -137,7 +131,6 @@ export async function processSymbol(symbol, timeframe) {
       [symbol, timeframe]
     );
 
-    // ALERTA DE REINGRÉS (sense trade)
     const alert = {
       symbol,
       timeframe,
@@ -168,7 +161,7 @@ export async function processSymbol(symbol, timeframe) {
     const entry = {
       symbol,
       timeframe,
-      type: sig.side, // LONG o SHORT
+      type: sig.side,
       entry: lastCandle.close,
       tp: channel.mid,
 
@@ -203,7 +196,6 @@ export async function processSymbol(symbol, timeframe) {
     );
   }
 }
-
 
 
 // -------------------------------------------------------------
