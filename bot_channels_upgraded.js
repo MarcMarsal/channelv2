@@ -10,6 +10,11 @@ import { getChannelFIAT } from "./core/channelEngine.js";
 import { detectChannelEntry } from "./core/channelSignals.js";
 import { classifyChannel } from "./core/channelClassifier.js";
 
+import { formatSpainDate, formatSpainTime } from "./utils.js";
+import { calculateChannelFIAT } from "./calculateChannelFIAT.js";
+import { calcularAccioFIAT } from "./calcularAccioFIAT.js";
+import { generarSenyalFIAT } from "./generarSenyalFIAT.js";
+
 // -------------------------------------------------------------
 // UNIVERS FIAT — Optimitzat per mean‑reversion en 15m
 // -------------------------------------------------------------
@@ -46,9 +51,10 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 // PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
 // -------------------------------------------------------------
-import { formatSpainDate, formatSpainTime } from "./utils.js";
 
-async function processSymbol(symbol, candles) {
+
+
+export async function processSymbolFIAT(db, symbol, candles) {
     const last = candles[candles.length - 1];
     if (!last) return;
 
@@ -56,18 +62,13 @@ async function processSymbol(symbol, candles) {
     const close = last.close;
     const ts    = last.timestamp;
 
-    // Format espanyol FIAT
     const data_es = formatSpainDate(ts);
     const hora_es = formatSpainTime(ts);
 
-    // Calcular canal FIAT
-    const { slope, intercept, dev, devlen, mid, upper, lower, operable, reason } =
-        calculateChannelFIAT(candles);
+    const canal = calculateChannelFIAT(candles);
 
-    // Calcular acció FIAT
-    const accio = calcularAccioFIAT(open, close, upper, lower);
+    const accio = calcularAccioFIAT(open, close, canal.upper, canal.lower);
 
-    // Guardar canal FIAT
     await db.query(`
         INSERT INTO channels_fiat (
             symbol, timestamp, data_es, hora_es,
@@ -87,16 +88,16 @@ async function processSymbol(symbol, candles) {
     `, [
         symbol, ts, data_es, hora_es,
         open, close,
-        slope, intercept, dev, devlen, mid, upper, lower,
-        operable, reason,
+        canal.slope, canal.intercept, canal.dev, canal.devlen, canal.mid, canal.upper, canal.lower,
+        canal.operable, canal.reason,
         accio
     ]);
 
-    // Generar senyal si cal
     if (accio !== "") {
-        await generarSenyalFIAT(symbol, ts, accio, open, close, upper, lower);
+        await generarSenyalFIAT(db, symbol, ts, accio, open, close, canal.upper, canal.lower);
     }
 }
+
 
 
 // -------------------------------------------------------------
