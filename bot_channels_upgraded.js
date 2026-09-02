@@ -47,33 +47,42 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 // PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
+// -------------------------------------------------------------
 export async function processSymbolFIAT(symbol, candles) {
-    const last = candles[candles.length - 1];
-    if (!last) return;
 
-    const open    = last.open;
-    const close   = last.close;
-    const ts      = last.timestamp;
-    const confirm = last.confirm;
+    // 1) Agafar el canal més recent
+    const existing = await client.query(`
+        SELECT * FROM channels_fiat
+        WHERE symbol = $1
+        ORDER BY timestamp DESC
+        LIMIT 1
+    `, [symbol]);
+
+    // 2) Determinar quin timestamp hem de processar
+    let ts;
+    if (existing.rows.length > 0) {
+        ts = existing.rows[0].timestamp;   // VELA DEL CANAL EXISTENT
+    } else {
+        ts = candles[candles.length - 1].timestamp; // PRIMERA VELA
+    }
+
+    // 3) Buscar la vela que coincideix amb el timestamp
+    const candle = candles.find(c => c.timestamp === ts);
+    if (!candle) return;
+
+    const open    = candle.open;
+    const close   = candle.close;
+    const confirm = candle.confirm;
 
     const data_es = formatSpainDate(ts);
     const hora_es = formatSpainTime(ts);
 
     const canal = calculateChannelFIAT(candles);
 
-    // -------------------------------------------------------------
-    // 1) Buscar si ja existeix un canal per aquesta vela (timestamp)
-    // -------------------------------------------------------------
-    const existing = await client.query(`
-        SELECT * FROM channels_fiat
-        WHERE symbol = $1 AND timestamp = $2
-    `, [symbol, ts]);
-
-    // -------------------------------------------------------------
-    // 2) Si NO existeix i confirm=false → INSERT preliminar
-    // -------------------------------------------------------------
+    // 4) Si NO existeix i confirm=false → INSERT preliminar
     if (existing.rows.length === 0 && confirm === false) {
-
         await client.query(`
             INSERT INTO channels_fiat (
                 symbol, timestamp, data_es, hora_es,
@@ -102,11 +111,8 @@ export async function processSymbolFIAT(symbol, candles) {
         return;
     }
 
-    // -------------------------------------------------------------
-    // 3) Si existeix i confirm=false → UPDATE només del close
-    // -------------------------------------------------------------
+    // 5) Si existeix i confirm=false → UPDATE close provisional
     if (existing.rows.length > 0 && confirm === false) {
-
         await client.query(`
             UPDATE channels_fiat
             SET close = $1
@@ -119,9 +125,7 @@ export async function processSymbolFIAT(symbol, candles) {
         return;
     }
 
-    // -------------------------------------------------------------
-    // 4) Si existeix i confirm=true → UPDATE final + acció + senyal
-    // -------------------------------------------------------------
+    // 6) Si existeix i confirm=true → UPDATE final + acció + senyal
     if (existing.rows.length > 0 && confirm === true) {
 
         const accio = calcularAccioFIAT(open, close, canal.upper, canal.lower);
@@ -148,7 +152,6 @@ export async function processSymbolFIAT(symbol, candles) {
         return;
     }
 }
-
 
 
 
