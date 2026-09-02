@@ -1,32 +1,34 @@
-// bot_channels_upgraded.js — FIAT‑PRO (canals + regressió + desviació + senyals)
+// bot_channels_15m.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
 
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
 import { alreadySent2 } from "./db/alreadySent2.js";
 import { saveSignalChannels } from "./db/saveSignalChannels.js";
 import { saveChannel } from "./db/saveChannel.js";
+
 import { getChannelFIAT } from "./core/channelEngine.js";
 import { detectChannelEntry } from "./core/channelSignals.js";
 import { classifyChannel } from "./core/channelClassifier.js";
 
 // -------------------------------------------------------------
-// UNIVERS FIAT‑PRO (igual que bot de patrons)
+// UNIVERS FIAT — Optimitzat per mean‑reversion en 15m
 // -------------------------------------------------------------
 const UNIVERSE = [
-  "APT-USDT","LINK-USDT","OP-USDT","SOL-USDT","BTC-USDT","FET-USDT",
-  "RENDER-USDT","XRP-USDT","ARB-USDT","ATOM-USDT","BNB-USDT","DOT-USDT",
-  "ETH-USDT","INJ-USDT","PEPE-USDT","TRUMP-USDT","ADA-USDT","ASTER-USDT",
-  "AVAX-USDT","BCH-USDT","HBAR-USDT","NEAR-USDT","SEI-USDT","SUI-USDT",
-  "VIRTUAL-USDT","LTC-USDT"
+  "BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","SEI-USDT",
+  "APT-USDT","ATOM-USDT","NEAR-USDT","OP-USDT","ARB-USDT","LINK-USDT",
+  "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","DOT-USDT","XRP-USDT"
 ];
 
+// Criptos dolentes eliminades: ADA, LTC, TRX, BCH, VIRTUAL, ASTER, TRUMP, PEPE
+// (ATR massa baix, mètxes llargues, rang pobre)
+
 const ACTIVE_CRYPTOS = UNIVERSE;
-const TIMEFRAMES = ["1H"];
+const TIMEFRAMES = ["15m"];
 
 // -------------------------------------------------------------
 // LLEGIR VELAS DE LA DB
 // -------------------------------------------------------------
-async function getCandlesFromDB(symbol, timeframe, limit) {
+async function getCandlesFromDB(symbol, timeframe, limit = 200) {
   const res = await client.query(
     `
     SELECT *
@@ -42,23 +44,23 @@ async function getCandlesFromDB(symbol, timeframe, limit) {
 }
 
 // -------------------------------------------------------------
-// PROCESSAR UN SÍMBOL (FIAT‑PRO CANALS)
+// PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
 // -------------------------------------------------------------
 export async function processSymbol(symbol, timeframe) {
   const candles = await getCandlesFromDB(symbol, timeframe, 200);
-  if (!candles || candles.length < 120) return;
+  if (!candles || candles.length < 80) return;   // 15m: mínim 80 veles
 
   candles.sort((a, b) => a.timestamp - b.timestamp);
   const lastCandle = candles[candles.length - 1];
 
-  // 1) Calcular canal FIAT (LonesomeTheBlue)
+  // 1) Calcular canal FIAT (regressió + desviació)
   const channel = getChannelFIAT(candles);
   if (!channel) return;
 
-  // 2) Classificar canal FIAT‑PRO (upper/lower/k + operabilitat)
+  // 2) Classificar canal (slope, rang, upper/lower)
   const classification = classifyChannel(channel);
 
-  // 3) Guardar canal FIAT‑PRO complet
+  // 3) Guardar canal FIAT complet
   await saveChannel({
     symbol,
     timeframe,
@@ -77,26 +79,25 @@ export async function processSymbol(symbol, timeframe) {
     timestamp: lastCandle.timestamp
   });
 
-  // 4) Si el canal NO és operable → NO hi ha senyal
-  // 4) FIAT‑PRO: si el canal NO és operable → igualment generem alerta,
-  // però amb la raó de cancel·lació (per validació i panell)
-  const entry = detectChannelEntry(candles);
+  // 4) Detectar punxada + reingrés + entrada FIAT
+  const entry = detectChannelEntry(candles, channel);
   if (!entry) return;
 
-  // 5) Evitar duplicats de senyal
+  // 5) Evitar duplicats
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (exists) return;
 
-  // 6) Guardar senyal FIAT‑PRO + Telegram
+  // 6) Guardar senyal FIAT (sense Telegram)
   await saveSignalChannels({
     symbol,
     timeframe,
     type: entry.type,          // LONG / SHORT
-    entry: entry.entry,
-    tp: entry.tp,
-    sl: entry.sl,
+    entry: entry.entry,        // punt FIAT d’entrada
+    tp: entry.tp,              // midline
+    sl: entry.sl,              // extrem + mètxa
+    rr: entry.rr,              // RR FIAT
     timestamp: entry.timestamp,
-    color: entry.color,
+    color: entry.color,        // groc = punxada, verd = entrada
 
     slope: channel.slope,
     intercept: channel.intercept,
@@ -106,24 +107,20 @@ export async function processSymbol(symbol, timeframe) {
     mid: channel.mid,
     len: channel.len,
 
-    // NOVETAT: si no operable → guardar raó
     reason: classification.operable ? null : classification.reason,
     operable: classification.operable
   });
-
 }
 
 // -------------------------------------------------------------
-// LOOP PRINCIPAL FIAT‑PRO
+// LOOP PRINCIPAL FIAT
 // -------------------------------------------------------------
 async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
-    for (const timeframe of TIMEFRAMES) {
-      try {
-        await processSymbol(symbol, timeframe);
-      } catch (err) {
-        console.log("Error processant", symbol, timeframe, err.message);
-      }
+    try {
+      await processSymbol(symbol, "15m");
+    } catch (err) {
+      console.log("Error processant", symbol, err.message);
     }
   }
 }
@@ -133,8 +130,8 @@ async function mainLoop() {
 // -------------------------------------------------------------
 async function startBot() {
   await initDB();
-  console.log("Bot FIAT‑PRO Channels en marxa (canals + regressió + desviació + senyals)");
-  cron.schedule("* * * * *", mainLoop);
+  console.log("Bot FIAT LonesomeTheBlue 15m en marxa (canals + punxada + reingrés + entrada)");
+  cron.schedule("* * * * *", mainLoop);  // cada minut
 }
 
 startBot();
