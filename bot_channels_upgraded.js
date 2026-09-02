@@ -46,155 +46,56 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 // PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
 // -------------------------------------------------------------
-export async function processSymbol(symbol, timeframe) {
-  const candles = await getCandlesFromDB(symbol, timeframe, 200);
-  if (!candles || candles.length < 80) return;
+import { formatSpainDate, formatSpainTime } from "./utils.js";
 
-  candles.sort((a, b) => a.timestamp - b.timestamp);
-  const lastCandle = candles[candles.length - 1];
+async function processSymbol(symbol, candles) {
+    const last = candles[candles.length - 1];
+    if (!last) return;
 
-  // 1) Canal FIAT
-  const channel = getChannelFIAT(candles);
-  if (!channel) return;
+    const open  = last.open;
+    const close = last.close;
+    const ts    = last.timestamp;
 
-  // 2) Classificació
-  const classification = classifyChannel(channel);
+    // Format espanyol FIAT
+    const data_es = formatSpainDate(ts);
+    const hora_es = formatSpainTime(ts);
 
-  // 3) Guardar canal
-  await saveChannel({
-    symbol,
-    timeframe,
-    slope: channel.slope,
-    intercept: channel.intercept,
-    endy: channel.endy,
-    dev: channel.dev,
-    devlen: channel.devlen,
-    mid: channel.mid,
-    len: channel.len,
-    upper: classification.upper,
-    lower: classification.lower,
-    k: classification.k,
-    operable: classification.operable,
-    reason: classification.reason,
-    timestamp: lastCandle.timestamp
-  });
+    // Calcular canal FIAT
+    const { slope, intercept, dev, devlen, mid, upper, lower, operable, reason } =
+        calculateChannelFIAT(candles);
 
-  // 4) STAGE
-  let stageRes = await client.query(
-    `SELECT stage FROM channel_stage WHERE symbol = $1 AND timeframe = $2`,
-    [symbol, timeframe]
-  );
+    // Calcular acció FIAT
+    const accio = calcularAccioFIAT(open, close, upper, lower);
 
-  let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
-  if (stage === null) stage = 0;
+    // Guardar canal FIAT
+    await db.query(`
+        INSERT INTO channels_fiat (
+            symbol, timestamp, data_es, hora_es,
+            open, close,
+            slope, intercept, dev, devlen, mid, upper, lower,
+            operable, reason,
+            accio,
+            created_at
+        ) VALUES (
+            $1, $2, $3, $4,
+            $5, $6,
+            $7, $8, $9, $10, $11, $12, $13,
+            $14, $15,
+            $16,
+            EXTRACT(EPOCH FROM NOW()) * 1000
+        )
+    `, [
+        symbol, ts, data_es, hora_es,
+        open, close,
+        slope, intercept, dev, devlen, mid, upper, lower,
+        operable, reason,
+        accio
+    ]);
 
-  const sig = detectChannelEntry(candles, channel, stage);
-
-  // --- STAGE 0: BREAKOUT ---
-  if (stage === 0 && sig.breakout) {
-    await client.query(
-      `INSERT INTO channel_stage(symbol, timeframe, stage)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (symbol,timeframe) DO UPDATE SET stage = $3`,
-      [symbol, timeframe, 1]
-    );
-
-    const alert = {
-      symbol,
-      timeframe,
-      type: sig.side === "upper" ? "BREAKOUT_UPPER" : "BREAKOUT_LOWER",
-      entry: lastCandle.close,
-      timestamp: lastCandle.timestamp,
-      color: "yellow",
-
-      slope: channel.slope,
-      intercept: channel.intercept,
-      endy: channel.endy,
-      dev: channel.dev,
-      devlen: channel.devlen,
-      mid: channel.mid,
-      len: channel.len,
-      reason: classification.reason,
-      operable: classification.operable
-    };
-
-    const exists = await alreadySent2(symbol, timeframe, alert.timestamp);
-    if (!exists) await saveSignalChannels(alert);
-
-    return;
-  }
-
-  // --- STAGE 1: REINGRÉS ---
-  if (stage === 1 && sig.reingres) {
-    await client.query(
-      `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
-      [symbol, timeframe]
-    );
-
-    const alert = {
-      symbol,
-      timeframe,
-      type: sig.side === "upper" ? "REINGRES_UPPER" : "REINGRES_LOWER",
-      entry: lastCandle.close,
-      timestamp: lastCandle.timestamp,
-      color: "orange",
-
-      slope: channel.slope,
-      intercept: channel.intercept,
-      endy: channel.endy,
-      dev: channel.dev,
-      devlen: channel.devlen,
-      mid: channel.mid,
-      len: channel.len,
-      reason: classification.reason,
-      operable: classification.operable
-    };
-
-    const exists = await alreadySent2(symbol, timeframe, alert.timestamp);
-    if (!exists) await saveSignalChannels(alert);
-
-    return;
-  }
-
-  // --- STAGE 2: ENTRADA ---
-  if (stage === 2 && sig.entrada) {
-    const entry = {
-      symbol,
-      timeframe,
-      type: sig.side,
-      entry: lastCandle.close,
-      tp: channel.mid,
-
-      sl: sig.side === "LONG"
-        ? channel.lower - Math.abs(lastCandle.close - channel.lower)
-        : channel.upper + Math.abs(lastCandle.close - channel.upper),
-
-      rr: sig.side === "LONG"
-        ? (channel.mid - lastCandle.close) / (lastCandle.close - channel.lower)
-        : (lastCandle.close - channel.mid) / (channel.upper - lastCandle.close),
-
-      timestamp: lastCandle.timestamp,
-      color: "green",
-
-      slope: channel.slope,
-      intercept: channel.intercept,
-      endy: channel.endy,
-      dev: channel.dev,
-      devlen: channel.devlen,
-      mid: channel.mid,
-      len: channel.len,
-      reason: classification.reason,
-      operable: classification.operable
-    };
-
-    const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
-    if (!exists) await saveSignalChannels(entry);
-
-    await client.query(
-      `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
-      [symbol, timeframe]
-    );
-  }
+    // Generar senyal si cal
+    if (accio !== "") {
+        await generarSenyalFIAT(symbol, ts, accio, open, close, upper, lower);
+    }
 }
 
 
