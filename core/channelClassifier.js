@@ -1,7 +1,7 @@
-// core/channelClassifier.js — FIAT‑PRO canal + operabilitat (slope percentual)
+// core/channelClassifier.js — FIAT 15m (canal + operabilitat + slope + rang)
 
 export function classifyChannel(channel) {
-  //const k = 0.8;
+  // En 15m NO apliquem K (canal reactiu)
   const k = 1;
 
   // Canal matemàtic pur
@@ -12,35 +12,40 @@ export function classifyChannel(channel) {
   const upper = channel.endy + (upper_raw - channel.endy) * k;
   const lower = channel.endy + (lower_raw - channel.endy) * k;
 
-  // Slope percentual FIAT‑PRO
+  // Slope percentual FIAT (15m = més permissiu)
   const slope_pct = Math.abs(channel.slope / channel.mid);
 
-  // Classificació FIAT‑PRO
   let operable = true;
   let reason = null;
 
-  // 1) Canal massa ample (>10%)
-  if ((upper - lower) / channel.mid > 0.10) {
+  // -------------------------------------------------------------
+  // FIAT 15m — criteris adaptats a temporalitat baixa
+  // -------------------------------------------------------------
+
+  // 1) Canal massa ample (>6%)
+  if ((upper - lower) / channel.mid > 0.06) {
     operable = false;
     reason = "canal massa ample";
 
-  // 2) Canal massa estret (<0.5%)
-  } else if ((upper - lower) / channel.mid < 0.005) {
+  // 2) Canal massa estret (<0.3%)
+  } else if ((upper - lower) / channel.mid < 0.003) {
     operable = false;
     reason = "canal massa estret";
 
   // 3) Slope inestable (percentual)
-  } else if (slope_pct > 0.0002) {   // 0.02% per vela
+  // 15m = slope més volàtil → llindar més alt
+  } else if (slope_pct > 0.00035) {   // 0.035% per vela
     operable = false;
     reason = "slope inestable";
 
-  // 4) Dev exagerada (>2%)
-  } else if (channel.dev / channel.mid > 0.02) {
+  // 4) Dev exagerada (>1.5%)
+  // En 15m la dev és més petita
+  } else if (channel.dev / channel.mid > 0.015) {
     operable = false;
     reason = "dev exagerada";
 
-  // 5) Devlen incoherent
-  } else if (channel.devlen < 1.0 || channel.devlen > 3.0) {
+  // 5) Devlen FIAT 15m (rang més curt)
+  } else if (channel.devlen < 0.8 || channel.devlen > 2.2) {
     operable = false;
     reason = "devlen incoherent";
 
