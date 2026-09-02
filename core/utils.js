@@ -16,6 +16,21 @@ export function formatSpainTime(tsMs) {
   });
 }
 
+export function formatSpainDate(tsMs) {
+  if (tsMs === null || tsMs === undefined) return "-";
+
+  const n = Number(String(tsMs).trim());
+  if (!Number.isFinite(n)) return "-";
+
+  const d = new Date(n);
+  if (isNaN(d.getTime())) return "-";
+
+  return d.toLocaleDateString("es-ES", {
+    timeZone: "Europe/Madrid"
+  });
+}
+
+
 export function splitSpainDate(tsMs) {
   const n = Number(String(tsMs).trim());
   const d = new Date(n);
