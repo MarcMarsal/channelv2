@@ -1,18 +1,19 @@
-// db/saveSignalChannels.js — FIAT‑PRO CHANNEL SIGNALS
+// db/saveSignalChannels.js — FIAT 15m (punxada + entrada + TP/SL/RR)
 
 import { client } from "./client.js";
 import { splitSpainDate } from "../core/utils.js";
-import { sendTelegram } from "../telegram/send.js";
 
 export async function saveSignalChannels({
   symbol,
   timeframe,
-  type,
-  entry,
+  type,        // LONG / SHORT
+  stage,       // "punxada" / "entrada"
+  entry,       // null si és punxada
   tp,
   sl,
+  rr,
   timestamp,
-  color,
+  color,       // yellow / green
 
   slope,
   intercept,
@@ -22,7 +23,6 @@ export async function saveSignalChannels({
   mid,
   len,
 
-  // 🔥 NOVETAT FIAT‑PRO
   operable,
   reason
 }) {
@@ -34,8 +34,8 @@ export async function saveSignalChannels({
   await client.query(
     `
     INSERT INTO signals_channels (
-      symbol, timeframe, type, color,
-      entry, tp, sl,
+      symbol, timeframe, type, stage, color,
+      entry, tp, sl, rr,
       timestamp, timestamp_ms,
       date_es, hora_es, timestamp_es,
       created_at, closed,
@@ -43,19 +43,19 @@ export async function saveSignalChannels({
       operable, reason
     )
     VALUES (
-      $1,$2,$3,$4,
-      $5,$6,$7,
-      $8,$9,
-      $10,$11,$12,
-      $13,false,
-      $14,$15,$16,$17,$18,$19,$20,
-      $21,$22
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,
+      $10,$11,
+      $12,$13,$14,
+      $15,false,
+      $16,$17,$18,$19,$20,$21,$22,
+      $23,$24
     )
     ON CONFLICT DO NOTHING
     `,
     [
-      symbol, timeframe, type, color,
-      entry, tp, sl,
+      symbol, timeframe, type, stage, color,
+      entry, tp, sl, rr,
       tsMs, tsMs,
       date_es, hora_es, timestamp_es,
       createdAt,
@@ -63,18 +63,4 @@ export async function saveSignalChannels({
       operable, reason
     ]
   );
-
-  //await sendTelegram({
-  //  bot: "FIAT-PRO CHANNELS",
-  //  symbol,
-  //  timeframe,
-  //  signalType: type,
-  //  color,
-  //  entry: Number(entry).toFixed(4),
-  //  tp: Number(tp).toFixed(4),
-  //  sl: Number(sl).toFixed(4),
-
-    // 🔥 NOVETAT: si no operable → afegim la raó al missatge
-  //  reason: operable ? "-" : reason
-  //});
 }
