@@ -37,28 +37,34 @@ async function getActiveSignals() {
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
-    SELECT
-      symbol,
-      open,
-      close,
-      upper,
-      mid,
-      lower,
-      slope,
-      dev,
-      devlen,
-      operable,
-      reason,
-      accio,
-      timestamp,
-      data_es,
-      hora_es
-    FROM channels_fiat
+    SELECT *
+    FROM (
+      SELECT
+        symbol,
+        open,
+        close,
+        upper,
+        mid,
+        lower,
+        slope,
+        dev,
+        devlen,
+        operable,
+        reason,
+        accio,
+        timestamp,
+        data_es,
+        hora_es,
+        ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY timestamp DESC) AS rn
+      FROM channels_fiat
+    ) t
+    WHERE rn <= 3
     ORDER BY symbol, timestamp DESC
   `);
 
   return q.rows;
 }
+
 
 
 
