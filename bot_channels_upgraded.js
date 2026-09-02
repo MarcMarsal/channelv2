@@ -1,10 +1,8 @@
-// bot_channels_15m.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
+// bot_channels_upgraded.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
 
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
 import { alreadySent2 } from "./db/alreadySent2.js";
-//import { saveSignalChannels } from "./db/saveSignalChannels.js";
-//import { saveChannel } from "./db/saveChannel.js";
 
 import { formatSpainDate, formatSpainTime } from "./core/utils.js";
 import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
@@ -20,11 +18,7 @@ const UNIVERSE = [
   "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","ONDO-USDT"
 ];
 
-// Criptos dolentes eliminades: ADA, LTC, TRX, BCH, VIRTUAL, ASTER, TRUMP, PEPE
-// (ATR massa baix, mètxes llargues, rang pobre)
-
 const ACTIVE_CRYPTOS = UNIVERSE;
-const TIMEFRAMES = ["15m"];
 
 // -------------------------------------------------------------
 // LLEGIR VELAS DE LA DB
@@ -47,28 +41,21 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 // PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
 // -------------------------------------------------------------
-// -------------------------------------------------------------
-// PROCESSAR UN SÍMBOL (FIAT LonesomeTheBlue)
-// -------------------------------------------------------------
 export async function processSymbolFIAT(symbol, candles) {
 
-    // 1) Agafar el canal més recent
+    // 1) Timestamp de la vela actual (última)
+    const last = candles[candles.length - 1];
+    if (!last) return;
+
+    const ts = last.timestamp;
+
+    // 2) Buscar si ja existeix un canal per aquesta vela
     const existing = await client.query(`
         SELECT * FROM channels_fiat
-        WHERE symbol = $1
-        ORDER BY timestamp DESC
-        LIMIT 1
-    `, [symbol]);
+        WHERE symbol = $1 AND timestamp = $2
+    `, [symbol, ts]);
 
-    // 2) Determinar quin timestamp hem de processar
-    let ts;
-    if (existing.rows.length > 0) {
-        ts = existing.rows[0].timestamp;   // VELA DEL CANAL EXISTENT
-    } else {
-        ts = candles[candles.length - 1].timestamp; // PRIMERA VELA
-    }
-
-    // 3) Buscar la vela que coincideix amb el timestamp
+    // 3) Buscar la vela que coincideix amb aquest timestamp
     const candle = candles.find(c => c.timestamp === ts);
     if (!candle) return;
 
@@ -79,10 +66,14 @@ export async function processSymbolFIAT(symbol, candles) {
     const data_es = formatSpainDate(ts);
     const hora_es = formatSpainTime(ts);
 
+    // 4) Calcular canal (només amb veles tancades)
     const canal = calculateChannelFIAT(candles);
 
-    // 4) Si NO existeix i confirm=false → INSERT preliminar
+    // -------------------------------------------------------------
+    // 5) Si NO existeix i confirm=false → INSERT preliminar
+    // -------------------------------------------------------------
     if (existing.rows.length === 0 && confirm === false) {
+
         await client.query(`
             INSERT INTO channels_fiat (
                 symbol, timestamp, data_es, hora_es,
@@ -111,8 +102,11 @@ export async function processSymbolFIAT(symbol, candles) {
         return;
     }
 
-    // 5) Si existeix i confirm=false → UPDATE close provisional
+    // -------------------------------------------------------------
+    // 6) Si existeix i confirm=false → UPDATE només del close
+    // -------------------------------------------------------------
     if (existing.rows.length > 0 && confirm === false) {
+
         await client.query(`
             UPDATE channels_fiat
             SET close = $1
@@ -125,7 +119,9 @@ export async function processSymbolFIAT(symbol, candles) {
         return;
     }
 
-    // 6) Si existeix i confirm=true → UPDATE final + acció + senyal
+    // -------------------------------------------------------------
+    // 7) Si existeix i confirm=true → UPDATE final + acció + senyal
+    // -------------------------------------------------------------
     if (existing.rows.length > 0 && confirm === true) {
 
         const accio = calcularAccioFIAT(open, close, canal.upper, canal.lower);
@@ -153,9 +149,6 @@ export async function processSymbolFIAT(symbol, candles) {
     }
 }
 
-
-
-
 // -------------------------------------------------------------
 // LOOP PRINCIPAL FIAT
 // -------------------------------------------------------------
@@ -169,7 +162,6 @@ async function mainLoop() {
     }
   }
 }
-
 
 // -------------------------------------------------------------
 // START BOT
