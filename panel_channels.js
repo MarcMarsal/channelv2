@@ -54,7 +54,7 @@ async function getChannels() {
         ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY timestamp DESC) AS rn
       FROM channels_fiat
     ) t
-    WHERE rn <= 3
+    WHERE rn <= 6
     ORDER BY symbol, timestamp DESC
   `);
 
