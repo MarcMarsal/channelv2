@@ -50,7 +50,7 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 
 
 
-export async function processSymbolFIAT(db, symbol, candles) {
+export async function processSymbolFIAT( symbol, candles) {
     const last = candles[candles.length - 1];
     if (!last) return;
 
