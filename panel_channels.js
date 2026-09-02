@@ -16,19 +16,11 @@ async function getActiveSignals() {
     SELECT
       id,
       symbol,
-      timeframe,
       type,
-      stage,
       entry,
       tp,
       sl,
-      rr,
-      color,
-      slope,
-      dev,
-      devlen,
-      mid,
-      timestamp_ms,
+      timestamp,
       date_es,
       hora_es,
       created_at
@@ -47,17 +39,13 @@ async function getChannels() {
   const q = await client.query(`
     SELECT DISTINCT ON (symbol)
       symbol,
-      timeframe,
       slope,
       intercept,
-      endy,
       dev,
       devlen,
       mid,
-      len,
       upper,
       lower,
-      k,
       operable,
       reason,
       timestamp
@@ -67,6 +55,7 @@ async function getChannels() {
 
   return q.rows;
 }
+
 
 // -------------------------------------------------------------
 // TAULA DE CANALS FIAT 15m
@@ -83,11 +72,9 @@ function renderChannelsTable(channels) {
         <td>${fmt(ch.upper)}</td>
         <td>${fmt(ch.mid)}</td>
         <td>${fmt(ch.lower)}</td>
-        <td>${fmt(ch.k)}</td>
         <td>${fmt(ch.slope)}</td>
         <td>${fmt(ch.dev)}</td>
         <td>${fmt(ch.devlen)}</td>
-        <td>${fmt(ch.len)}</td>
         <td>${ch.operable ? "OPERABLE" : "NO"}</td>
         <td>${ch.reason || "-"}</td>
       </tr>
@@ -104,11 +91,9 @@ function renderChannelsTable(channels) {
           <th>Upper</th>
           <th>Mid</th>
           <th>Lower</th>
-          <th>K</th>
           <th>Slope</th>
           <th>Dev</th>
           <th>DevLen</th>
-          <th>Len</th>
           <th>Operable</th>
           <th>Reason</th>
         </tr>
@@ -120,6 +105,7 @@ function renderChannelsTable(channels) {
   `;
 }
 
+
 // -------------------------------------------------------------
 // TAULA D'ALERTES FIAT 15m
 // -------------------------------------------------------------
@@ -127,23 +113,14 @@ function renderActiveSignalsTable(signals) {
   let rows = "";
 
   for (const s of signals) {
-    let color = s.color || "#00ff00";
-
     rows += `
-      <tr style="color:${color}">
+      <tr style="color:cyan">
         <td>${s.id}</td>
         <td>${s.symbol}</td>
-        <td>${s.timeframe}</td>
         <td>${s.type}</td>
-        <td>${s.stage}</td>
         <td>${fmt(s.entry)}</td>
         <td>${fmt(s.tp)}</td>
         <td>${fmt(s.sl)}</td>
-        <td>${fmt(s.rr)}</td>
-        <td>${fmt(s.slope)}</td>
-        <td>${fmt(s.dev)}</td>
-        <td>${fmt(s.devlen)}</td>
-        <td>${fmt(s.mid)}</td>
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
         <td>${formatSpainTime(s.created_at)}</td>
@@ -152,23 +129,16 @@ function renderActiveSignalsTable(signals) {
   }
 
   return `
-    <h2>Últimes 30 alertes FIAT 15m (punxada + entrada)</h2>
+    <h2>Últimes 30 alertes FIAT 15m (breakout / reingrés)</h2>
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Symbol</th>
-          <th>TF</th>
-          <th>Tipus</th>
-          <th>Stage</th>
+          <th>Acció</th>
           <th>Entrada</th>
-          <th>TP</th>
-          <th>SL</th>
-          <th>RR</th>
-          <th>Slope</th>
-          <th>Dev</th>
-          <th>DevLen</th>
-          <th>Mid</th>
+          <th>Upper</th>
+          <th>Lower</th>
           <th>Data</th>
           <th>Hora</th>
           <th>Creat</th>
