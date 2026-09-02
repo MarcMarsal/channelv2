@@ -4,7 +4,7 @@
   "description": "FIAT Linear Regression Channels Bot (Railway + PostgreSQL + Telegram)",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node bot_channels_upgraded.js",
     "panel": "node src/panel_channels.js",
     "dev": "nodemon src/index.js"
   },
