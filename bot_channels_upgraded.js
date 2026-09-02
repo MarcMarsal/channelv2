@@ -10,10 +10,10 @@ import { getChannelFIAT } from "./core/channelEngine.js";
 import { detectChannelEntry } from "./core/channelSignals.js";
 import { classifyChannel } from "./core/channelClassifier.js";
 
-import { formatSpainDate, formatSpainTime } from "./utils.js";
-import { calculateChannelFIAT } from "./calculateChannelFIAT.js";
-import { calcularAccioFIAT } from "./calcularAccioFIAT.js";
-import { generarSenyalFIAT } from "./generarSenyalFIAT.js";
+import { formatSpainDate, formatSpainTime } from "./core/utils.js";
+import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
+import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
+import { generarSenyalFIAT } from "./core/generarSenyalFIAT.js";
 
 // -------------------------------------------------------------
 // UNIVERS FIAT — Optimitzat per mean‑reversion en 15m
