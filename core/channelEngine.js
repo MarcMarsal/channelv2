@@ -1,17 +1,20 @@
-// FIAT-PRO — Canal LonesomeTheBlue 100% igual a TradingView
-export function getChannelFIAT(candles, len = 100, devlen = 2.0) {
+// core/channelEngine.js — FIAT 15m LonesomeTheBlue (versió definitiva)
+
+export function getChannelFIAT(candles, len = 60, devlen = 1.6) {
+  // 15m: mínim 60 veles
   if (!candles || candles.length < len) return null;
 
+  // finestra de càlcul
   const window = candles.slice(-len);
   const src = window.map(c => Number(c.close));
 
   const n = len;
 
-  // i = 0..n-1
+  // mitjanes
   const meanX = (n - 1) / 2;
   const meanY = src.reduce((a, b) => a + b, 0) / n;
 
-  // slope = cov(i, src) / var(i)
+  // regressió centrada (igual que TradingView)
   let cov = 0;
   let varX = 0;
 
@@ -22,27 +25,31 @@ export function getChannelFIAT(candles, len = 100, devlen = 2.0) {
   }
 
   const slope = cov / varX;
-
-  // intercept = meanY - slope * meanX
   const intercept = meanY - slope * meanX;
 
-  // endy = valor de la recta a la última barra
+  // valor final de la recta
   const endy = intercept + slope * (n - 1);
 
-  // DEV EXACTE DE TRADINGVIEW (recta invertida)
+  // desviació EXACTA de TradingView (recta invertida)
   let dev = 0;
   for (let i = 0; i < n; i++) {
-    const fitted = slope * (n - i) + intercept;   // <-- CRÍTIC
+    const fitted = slope * (n - i) + intercept; // CRÍTIC
     const diff = src[i] - fitted;
     dev += diff * diff;
   }
   dev = Math.sqrt(dev / n);
 
+  // FIAT 15m: suavitzat del slope per evitar soroll
+  const slope_smooth = slope * 0.85;
+
+  // FIAT 15m: dev ajustada per evitar punxaments falsos
+  const dev_adj = dev * 0.92;
+
   return {
     intercept,
     endy,
-    dev,
-    slope,
+    dev: dev_adj,
+    slope: slope_smooth,
     devlen,
     mid: meanY,
     len,
