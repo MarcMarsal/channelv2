@@ -79,25 +79,59 @@ export async function processSymbol(symbol, timeframe) {
     timestamp: lastCandle.timestamp
   });
 
-  // 4) Detectar punxada + reingrés + entrada FIAT
-  const entry = detectChannelEntry(candles, channel);
-  if (!entry) return;
+ // -------------------------------------------------------------
+// 4) FIAT STAGE — punxada → reingrés → entrada
+// -------------------------------------------------------------
 
-  // 5) Evitar duplicats
-  const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
-  if (exists) return;
+// Carregar stage de la DB
+let stageRes = await client.query(
+  `SELECT stage FROM channel_stage WHERE symbol = $1 AND timeframe = $2`,
+  [symbol, timeframe]
+);
 
-  // 6) Guardar senyal FIAT (sense Telegram)
-  await saveSignalChannels({
+let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
+if (stage === null) stage = 0;
+
+// Detectar punxada o reingrés
+const sig = detectChannelEntry(candles, channel);
+
+// --- Stage 0: buscar punxada ---
+if (stage === 0 && sig?.punxada) {
+  await client.query(
+    `INSERT INTO channel_stage(symbol, timeframe, stage)
+     VALUES ($1,$2,$3)
+     ON CONFLICT (symbol,timeframe) DO UPDATE SET stage = $3`,
+    [symbol, timeframe, 1]
+  );
+  return; // només avis
+}
+
+// --- Stage 1: buscar reingrés ---
+if (stage === 1 && sig?.reingres) {
+  await client.query(
+    `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
+    [symbol, timeframe]
+  );
+}
+
+// --- Stage 2: ENTRADA FIAT ---
+if (stage === 2) {
+
+  // Construir entrada FIAT
+  const entry = {
     symbol,
     timeframe,
-    type: entry.type,          // LONG / SHORT
-    entry: entry.entry,        // punt FIAT d’entrada
-    tp: entry.tp,              // midline
-    sl: entry.sl,              // extrem + mètxa
-    rr: entry.rr,              // RR FIAT
-    timestamp: entry.timestamp,
-    color: entry.color,        // groc = punxada, verd = entrada
+    type: sig.side === "lower" ? "LONG" : "SHORT",
+    entry: lastCandle.close,
+    tp: channel.mid,
+    sl: sig.side === "lower"
+      ? channel.lower - Math.abs(lastCandle.close - channel.lower)
+      : channel.upper + Math.abs(lastCandle.close - channel.upper),
+    rr: sig.side === "lower"
+      ? (channel.mid - lastCandle.close) / (lastCandle.close - channel.lower)
+      : (lastCandle.close - channel.mid) / (channel.upper - lastCandle.close),
+    timestamp: lastCandle.timestamp,
+    color: "green",
 
     slope: channel.slope,
     intercept: channel.intercept,
@@ -106,11 +140,23 @@ export async function processSymbol(symbol, timeframe) {
     devlen: channel.devlen,
     mid: channel.mid,
     len: channel.len,
-
     reason: classification.operable ? null : classification.reason,
     operable: classification.operable
-  });
+  };
+
+  // Evitar duplicats
+  const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
+  if (!exists) {
+    await saveSignalChannels(entry);
+  }
+
+  // Reset FIAT
+  await client.query(
+    `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
+    [symbol, timeframe]
+  );
 }
+
 
 // -------------------------------------------------------------
 // LOOP PRINCIPAL FIAT
