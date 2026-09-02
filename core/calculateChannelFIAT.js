@@ -1,6 +1,6 @@
 // fitxer calculateChannelFIAT.js
 
-function calculateChannelFIAT(candles) {
+export function calculateChannelFIAT(candles) {
     const len = 60; // tram del canal
     if (candles.length < len) {
         return {
