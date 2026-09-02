@@ -1,5 +1,3 @@
-// bot_channels_15m.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
-
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
 import { alreadySent2 } from "./db/alreadySent2.js";
@@ -18,9 +16,6 @@ const UNIVERSE = [
   "APT-USDT","ATOM-USDT","NEAR-USDT","OP-USDT","ARB-USDT","LINK-USDT",
   "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","ONDO-USDT"
 ];
-
-// Criptos dolentes eliminades: ADA, LTC, TRX, BCH, VIRTUAL, ASTER, TRUMP, PEPE
-// (ATR massa baix, mètxes llargues, rang pobre)
 
 const ACTIVE_CRYPTOS = UNIVERSE;
 const TIMEFRAMES = ["15m"];
@@ -48,19 +43,16 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 export async function processSymbol(symbol, timeframe) {
   const candles = await getCandlesFromDB(symbol, timeframe, 200);
-  if (!candles || candles.length < 80) return;   // 15m: mínim 80 veles
+  if (!candles || candles.length < 80) return;
 
   candles.sort((a, b) => a.timestamp - b.timestamp);
   const lastCandle = candles[candles.length - 1];
 
-  // 1) Calcular canal FIAT (regressió + desviació)
   const channel = getChannelFIAT(candles);
   if (!channel) return;
 
-  // 2) Classificar canal (slope, rang, upper/lower)
   const classification = classifyChannel(channel);
 
-  // 3) Guardar canal FIAT complet
   await saveChannel({
     symbol,
     timeframe,
@@ -82,11 +74,7 @@ export async function processSymbol(symbol, timeframe) {
  // -------------------------------------------------------------
 // 4) FIAT STAGE — punxada → reingrés → entrada
 // -------------------------------------------------------------
-// -------------------------------------------------------------
-// 4) FIAT STAGE — punxada → reingrés → entrada
-// -------------------------------------------------------------
 
-// Carregar stage de la DB
 let stageRes = await client.query(
   `SELECT stage FROM channel_stage WHERE symbol = $1 AND timeframe = $2`,
   [symbol, timeframe]
@@ -95,7 +83,6 @@ let stageRes = await client.query(
 let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
 if (stage === null) stage = 0;
 
-// Detectar punxada, reingrés i entrada FIAT
 const sig = detectChannelEntry(candles, channel);
 
 // -------------------------------------------------------------
@@ -108,7 +95,7 @@ if (stage === 0 && sig?.punxada) {
      ON CONFLICT (symbol,timeframe) DO UPDATE SET stage = $3`,
     [symbol, timeframe, 1]
   );
-  return;   // Esperar reingrés
+  return;
 }
 
 // -------------------------------------------------------------
@@ -116,13 +103,11 @@ if (stage === 0 && sig?.punxada) {
 // -------------------------------------------------------------
 if (stage === 1 && sig?.reingres) {
 
-  // Validació extra: la punxada ha de ser real
   const wasOutside = candles.slice(-3).some(c =>
     c.low < classification.lower || c.high > classification.upper
   );
 
   if (!wasOutside) {
-    // Reingrés fals → reset
     await client.query(
       `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
       [symbol, timeframe]
@@ -130,12 +115,11 @@ if (stage === 1 && sig?.reingres) {
     return;
   }
 
-  // Reingrés confirmat → stage 2
   await client.query(
     `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
-  return;   // Esperar entrada institucional
+  return;
 }
 
 // -------------------------------------------------------------
@@ -172,13 +156,11 @@ if (stage === 2 && sig?.entrada) {
     operable: classification.operable
   };
 
-  // Evitar duplicats
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (!exists) {
     await saveSignalChannels(entry);
   }
 
-  // Reset FIAT
   await client.query(
     `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
@@ -187,11 +169,8 @@ if (stage === 2 && sig?.entrada) {
   return;
 }
 
-// -------------------------------------------------------------
-// Si stage = 2 però NO hi ha entrada → NO fer res
-// -------------------------------------------------------------
 if (stage === 2 && !sig?.entrada) {
-  return;   // Esperar entrada real
+  return;
 }
 
 // -------------------------------------------------------------
@@ -213,7 +192,7 @@ async function mainLoop() {
 async function startBot() {
   await initDB();
   console.log("Bot FIAT LonesomeTheBlue 15m en marxa (canals + punxada + reingrés + entrada)");
-  cron.schedule("* * * * *", mainLoop);  // cada minut
+  cron.schedule("* * * * *", mainLoop);
 }
 
 startBot();
