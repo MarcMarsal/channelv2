@@ -112,11 +112,11 @@ if (stage === 1 && sig?.reingres) {
     `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
+  return; // FIAT-safe: evitar entrada immediata
 }
 
 // --- Stage 2: ENTRADA FIAT ---
-if (stage === 2) {
-
+if (stage === 2 && sig?.entrada) {
   // Construir entrada FIAT
   const entry = {
     symbol,
@@ -144,13 +144,11 @@ if (stage === 2) {
     operable: classification.operable
   };
 
-  // Evitar duplicats
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (!exists) {
     await saveSignalChannels(entry);
   }
 
-  // Reset FIAT
   await client.query(
     `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
