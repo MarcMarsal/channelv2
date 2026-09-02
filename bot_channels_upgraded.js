@@ -16,7 +16,7 @@ import { classifyChannel } from "./core/channelClassifier.js";
 const UNIVERSE = [
   "BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","SEI-USDT",
   "APT-USDT","ATOM-USDT","NEAR-USDT","OP-USDT","ARB-USDT","LINK-USDT",
-  "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","DOT-USDT","XRP-USDT"
+  "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","ONDO-USDT"
 ];
 
 // Criptos dolentes eliminades: ADA, LTC, TRX, BCH, VIRTUAL, ASTER, TRUMP, PEPE
