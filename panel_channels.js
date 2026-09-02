@@ -33,7 +33,7 @@ async function getActiveSignals() {
 }
 
 // -------------------------------------------------------------
-// LLEGIR ÚLTIMS CANALS FIAT 15m (un per symbol)
+// LLEGIR ÚLTIMS CANALS FIAT 15m (últims 3 per symbol)
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
@@ -61,15 +61,25 @@ async function getChannels() {
   return q.rows;
 }
 
-
-
 // -------------------------------------------------------------
 // TAULA DE CANALS FIAT 15m
 // -------------------------------------------------------------
 function renderChannelsTable(channels) {
   let rows = "";
 
+  // FILTRE FIAT (localStorage)
+  const filterMode = `
+    <script>
+      document.write(localStorage.getItem("filterMode") || "all");
+    </script>
+  `;
+
   for (const ch of channels) {
+
+    // Aplicar filtre
+    if (filterMode.includes("open") && ch.confirm === true) {
+      continue; // només mostrar canals oberts
+    }
 
     // Colors FIAT
     let color = "yellow"; // canal obert sense acció
@@ -99,6 +109,28 @@ function renderChannelsTable(channels) {
   return `
     <h2>Canals FIAT 15m (últims 3 per cripto)</h2>
 
+    <label style="color:#0f0; font-size:18px;">
+      Mostrar:
+      <select id="filterMode" style="font-size:16px; padding:4px;">
+        <option value="all">Tots els canals</option>
+        <option value="open">Només canals oberts</option>
+      </select>
+    </label>
+
+    <script>
+      // Carregar filtre guardat
+      const saved = localStorage.getItem("filterMode") || "all";
+      document.getElementById("filterMode").value = saved;
+
+      // Guardar quan l’usuari el canvia
+      document.getElementById("filterMode").addEventListener("change", (e) => {
+        localStorage.setItem("filterMode", e.target.value);
+        location.reload(); // refrescar per aplicar el filtre
+      });
+    </script>
+
+    <br><br>
+
     <table>
       <thead>
         <tr>
@@ -124,7 +156,6 @@ function renderChannelsTable(channels) {
     </table>
   `;
 }
-
 
 // -------------------------------------------------------------
 // TAULA D'ALERTES FIAT 15m
