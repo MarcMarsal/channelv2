@@ -1,46 +1,100 @@
-// core/channelSignals.js — entrades FIAT (extrems cap al centre)
+// core/channelSignals.js — FIAT 15m (punxada + reingrés + entrada)
 
 import { getChannelFIAT } from "./channelEngine.js";
 
-export function detectChannelEntry(candles, len = 100, devlen = 2.0) {
-  if (!candles || candles.length < len) return null;
+export function detectChannelEntry(candles, channel = null) {
+  if (!candles || candles.length < 60) return null;
 
-  const channel = getChannelFIAT(candles, len, devlen);
-  if (!channel) return null;
+  // Canal FIAT 15m
+  const ch = channel || getChannelFIAT(candles, 60, 1.6);
+  if (!ch) return null;
 
-  const { endy: y2_, dev, slope, devlen: dmult, lastClose } = channel;
+  const { endy, dev, slope, devlen, lastClose, mid } = ch;
   const lastCandle = candles[candles.length - 1];
 
-  // outofchannel literal de LonesomeTheBlue
-  let outofchannel = -1;
+  // -------------------------------------------------------------
+  // 1) DETECTAR PUNXADA (avis previ)
+  // -------------------------------------------------------------
+  const upper = endy + dev * devlen;
+  const lower = endy - dev * devlen;
 
-  if (slope > 0 && lastClose < y2_ - dev * dmult) outofchannel = 0;   // trencament per sota
-  else if (slope < 0 && lastClose > y2_ + dev * dmult) outofchannel = 2; // trencament per sobre
+  let punxada = false;
+  let side = null;
 
-  if (outofchannel === -1) return null;
+  if (lastClose > upper) {
+    punxada = true;
+    side = "upper";
+  } else if (lastClose < lower) {
+    punxada = true;
+    side = "lower";
+  }
 
-  const isLong = outofchannel === 0 && slope > 0;
-  const isShort = outofchannel === 2 && slope < 0;
+  // Si hi ha punxada → avis groc
+  if (punxada) {
+    return {
+      type: side === "upper" ? "SHORT" : "LONG",
+      stage: "punxada",          // AVÍS PREVI
+      entry: null,
+      tp: null,
+      sl: null,
+      rr: null,
+      timestamp: lastCandle.timestamp,
+      color: "yellow",
+      channel: ch
+    };
+  }
+
+  // -------------------------------------------------------------
+  // 2) DETECTAR REINGRÉS (entrada confirmada)
+  // -------------------------------------------------------------
+  // Reingrés = tancament dins del canal després d'haver estat fora
+  const prevClose = candles[candles.length - 2].close;
+
+  const prevWasOutside =
+    prevClose > upper || prevClose < lower;
+
+  const nowInside =
+    lastClose <= upper && lastClose >= lower;
+
+  if (!prevWasOutside || !nowInside) return null;
+
+  // Direcció del trade
+  const isShort = prevClose > upper;
+  const isLong = prevClose < lower;
 
   if (!isLong && !isShort) return null;
 
+  // -------------------------------------------------------------
+  // 3) ENTRADA FIAT (tancament de reingrés)
+  // -------------------------------------------------------------
   const entry = lastClose;
 
-  // TP = regressió al final del canal (y2_)
-  const tp = y2_;
+  // TP = midline
+  const tp = mid;
 
-  // SL = banda oposada (invalidació simple)
+  // SL = extrem + mètxa
+  const wick = isLong
+    ? Math.abs(prevClose - lower)
+    : Math.abs(prevClose - upper);
+
   const sl = isLong
-    ? y2_ - dev * dmult
-    : y2_ + dev * dmult;
+    ? lower - wick
+    : upper + wick;
+
+  // RR
+  const rr = isLong
+    ? (tp - entry) / (entry - sl)
+    : (entry - tp) / (sl - entry);
 
   return {
     type: isLong ? "LONG" : "SHORT",
+    stage: "entrada",           // ENTRADA CONFIRMADA
     entry,
     tp,
     sl,
+    rr,
     timestamp: lastCandle.timestamp,
-    color: isLong ? "lime" : "red",
-    channel
+    color: "green",
+    channel: ch
   };
 }
