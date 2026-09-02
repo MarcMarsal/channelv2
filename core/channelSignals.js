@@ -2,42 +2,63 @@
 
 import { getChannelFIAT } from "./channelEngine.js";
 
-export function detectChannelEntry(candles, channel = null) {
-  if (!candles || candles.length < 60) return null;
+// core/channelSignals.js — FIAT LonesomeTheBlue (punxada + reingrés + entrada)
 
-  const ch = channel || getChannelFIAT(candles, 60, 1.6);
-  if (!ch) return null;
+export function detectChannelEntry(candles, channel) {
+  if (!candles || candles.length < channel.len) return null;
 
-  const { endy, dev, slope, devlen, lastClose, mid } = ch;
-  const lastCandle = candles[candles.length - 1];
+  const last = candles[candles.length - 1];
+  const prev = candles[candles.length - 2];
 
-  const upper = endy + dev * devlen;
-  const lower = endy - dev * devlen;
+  const { upper, lower, mid } = channel;
 
-  // --- 1) Punxada ---
-  if (lastClose > upper || lastClose < lower) {
-    return {
-      punxada: true,
-      side: lastClose > upper ? "upper" : "lower",
-      timestamp: lastCandle.timestamp,
-      channel: ch
-    };
-  }
+  // -------------------------------------------------------------
+  // 1) PUNXADA FIAT — confirmada (wick o close)
+  // -------------------------------------------------------------
+  const punxadaLower =
+    last.low < lower && prev.low >= lower;   // travessa cap avall
 
-  // --- 2) Reingrés ---
-  const prevClose = candles[candles.length - 2].close;
+  const punxadaUpper =
+    last.high > upper && prev.high <= upper; // travessa cap amunt
 
-  const prevWasOutside = prevClose > upper || prevClose < lower;
-  const nowInside = lastClose <= upper && lastClose >= lower;
+  const punxada = punxadaLower || punxadaUpper;
 
-  if (prevWasOutside && nowInside) {
-    return {
-      reingres: true,
-      side: prevClose > upper ? "upper" : "lower",
-      timestamp: lastCandle.timestamp,
-      channel: ch
-    };
-  }
+  // -------------------------------------------------------------
+  // 2) REINGRÉS FIAT — confirmat (tancament dins del canal)
+  // -------------------------------------------------------------
+  const reingresLower =
+    prev.low < lower && last.close > lower && last.close < mid;
 
-  return null;
+  const reingresUpper =
+    prev.high > upper && last.close < upper && last.close > mid;
+
+  const reingres = reingresLower || reingresUpper;
+
+  // -------------------------------------------------------------
+  // 3) ENTRADA FIAT — institucional (centre del canal)
+  // -------------------------------------------------------------
+  const entradaLower =
+    prev.close > lower && last.close > lower && last.close < mid;
+
+  const entradaUpper =
+    prev.close < upper && last.close < upper && last.close > mid;
+
+  const entrada = entradaLower || entradaUpper;
+
+  // -------------------------------------------------------------
+  // 4) SIDE FIAT — costat del canal
+  // -------------------------------------------------------------
+  let side = null;
+  if (punxadaLower || reingresLower || entradaLower) side = "lower";
+  if (punxadaUpper || reingresUpper || entradaUpper) side = "upper";
+
+  // -------------------------------------------------------------
+  // 5) RETORN FIAT — estructura institucional
+  // -------------------------------------------------------------
+  return {
+    punxada,
+    reingres,
+    entrada,
+    side
+  };
 }
