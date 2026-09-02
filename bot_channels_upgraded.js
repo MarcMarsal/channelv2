@@ -89,9 +89,13 @@ export async function processSymbolFIAT( symbol, candles) {
         accio
     ]);
 
-    if (accio !== "") {
+      if (accio !== "") {
+       const exists = await alreadySent2(symbol, "15m", ts);
+       if (exists) return;
+
         await generarSenyalFIAT(symbol, ts, accio, open, close, canal.upper, canal.lower);
     }
+
 }
 
 
