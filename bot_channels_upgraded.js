@@ -6,10 +6,6 @@ import { alreadySent2 } from "./db/alreadySent2.js";
 import { saveSignalChannels } from "./db/saveSignalChannels.js";
 import { saveChannel } from "./db/saveChannel.js";
 
-import { getChannelFIAT } from "./core/channelEngine.js";
-import { detectChannelEntry } from "./core/channelSignals.js";
-import { classifyChannel } from "./core/channelClassifier.js";
-
 import { formatSpainDate, formatSpainTime } from "./core/utils.js";
 import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
