@@ -1,3 +1,5 @@
+// bot_channels_15m.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
+
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
 import { alreadySent2 } from "./db/alreadySent2.js";
@@ -16,6 +18,9 @@ const UNIVERSE = [
   "APT-USDT","ATOM-USDT","NEAR-USDT","OP-USDT","ARB-USDT","LINK-USDT",
   "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","ONDO-USDT"
 ];
+
+// Criptos dolentes eliminades: ADA, LTC, TRX, BCH, VIRTUAL, ASTER, TRUMP, PEPE
+// (ATR massa baix, mètxes llargues, rang pobre)
 
 const ACTIVE_CRYPTOS = UNIVERSE;
 const TIMEFRAMES = ["15m"];
@@ -43,16 +48,19 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 // -------------------------------------------------------------
 export async function processSymbol(symbol, timeframe) {
   const candles = await getCandlesFromDB(symbol, timeframe, 200);
-  if (!candles || candles.length < 80) return;
+  if (!candles || candles.length < 80) return;   // 15m: mínim 80 veles
 
   candles.sort((a, b) => a.timestamp - b.timestamp);
   const lastCandle = candles[candles.length - 1];
 
+  // 1) Calcular canal FIAT (regressió + desviació)
   const channel = getChannelFIAT(candles);
   if (!channel) return;
 
+  // 2) Classificar canal (slope, rang, upper/lower)
   const classification = classifyChannel(channel);
 
+  // 3) Guardar canal FIAT complet
   await saveChannel({
     symbol,
     timeframe,
@@ -75,6 +83,7 @@ export async function processSymbol(symbol, timeframe) {
 // 4) FIAT STAGE — punxada → reingrés → entrada
 // -------------------------------------------------------------
 
+// Carregar stage de la DB
 let stageRes = await client.query(
   `SELECT stage FROM channel_stage WHERE symbol = $1 AND timeframe = $2`,
   [symbol, timeframe]
@@ -83,11 +92,10 @@ let stageRes = await client.query(
 let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
 if (stage === null) stage = 0;
 
+// Detectar punxada o reingrés
 const sig = detectChannelEntry(candles, channel);
 
-// -------------------------------------------------------------
-// STAGE 0 → PUNXADA FIAT
-// -------------------------------------------------------------
+// --- Stage 0: buscar punxada ---
 if (stage === 0 && sig?.punxada) {
   await client.query(
     `INSERT INTO channel_stage(symbol, timeframe, stage)
@@ -95,53 +103,33 @@ if (stage === 0 && sig?.punxada) {
      ON CONFLICT (symbol,timeframe) DO UPDATE SET stage = $3`,
     [symbol, timeframe, 1]
   );
-  return;
+  return; // només avis
 }
 
-// -------------------------------------------------------------
-// STAGE 1 → REINGRÉS FIAT
-// -------------------------------------------------------------
+// --- Stage 1: buscar reingrés ---
 if (stage === 1 && sig?.reingres) {
-
-  const wasOutside = candles.slice(-3).some(c =>
-    c.low < classification.lower || c.high > classification.upper
-  );
-
-  if (!wasOutside) {
-    await client.query(
-      `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
-      [symbol, timeframe]
-    );
-    return;
-  }
-
   await client.query(
     `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
-  return;
 }
 
-// -------------------------------------------------------------
-// STAGE 2 → ENTRADA FIAT INSTITUCIONAL
-// -------------------------------------------------------------
-if (stage === 2 && sig?.entrada) {
+// --- Stage 2: ENTRADA FIAT ---
+if (stage === 2) {
 
+  // Construir entrada FIAT
   const entry = {
     symbol,
     timeframe,
     type: sig.side === "lower" ? "LONG" : "SHORT",
     entry: lastCandle.close,
     tp: channel.mid,
-
     sl: sig.side === "lower"
       ? channel.lower - Math.abs(lastCandle.close - channel.lower)
       : channel.upper + Math.abs(lastCandle.close - channel.upper),
-
     rr: sig.side === "lower"
       ? (channel.mid - lastCandle.close) / (lastCandle.close - channel.lower)
       : (lastCandle.close - channel.mid) / (channel.upper - lastCandle.close),
-
     timestamp: lastCandle.timestamp,
     color: "green",
 
@@ -156,22 +144,20 @@ if (stage === 2 && sig?.entrada) {
     operable: classification.operable
   };
 
+  // Evitar duplicats
   const exists = await alreadySent2(symbol, timeframe, entry.timestamp);
   if (!exists) {
     await saveSignalChannels(entry);
   }
 
+  // Reset FIAT
   await client.query(
     `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
-
-  return;
+}
 }
 
-if (stage === 2 && !sig?.entrada) {
-  return;
-}
 
 // -------------------------------------------------------------
 // LOOP PRINCIPAL FIAT
@@ -192,7 +178,7 @@ async function mainLoop() {
 async function startBot() {
   await initDB();
   console.log("Bot FIAT LonesomeTheBlue 15m en marxa (canals + punxada + reingrés + entrada)");
-  cron.schedule("* * * * *", mainLoop);
+  cron.schedule("* * * * *", mainLoop);  // cada minut
 }
 
 startBot();
