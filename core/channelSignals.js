@@ -1,16 +1,12 @@
 // core/channelSignals.js — FIAT 15m (punxada + reingrés + entrada)
 
 export function detectChannelEntry(candles, channel, stage) {
-  // stage pot ser:
-  // "neutral" | "breakoutUpper" | "breakoutLower" | "reingresUpper" | "reingresLower"
-
   if (!candles || candles.length === 0) {
     return {
       breakout: false,
       reingres: false,
       entrada: false,
-      side: null,
-      stage
+      side: null
     };
   }
 
@@ -22,40 +18,43 @@ export function detectChannelEntry(candles, channel, stage) {
   let entrada = false;
   let side = null;
 
-  // 1️⃣ TRENCAMENT DEL CANAL (alerta)
-  if (last.close > upper) {
-    breakout = true;
-    stage = "breakoutUpper";
-  } else if (last.close < lower) {
-    breakout = true;
-    stage = "breakoutLower";
+  // 1️⃣ TRENCAMENT DEL CANAL (stage 0)
+  if (stage === 0) {
+    if (last.close > upper) {
+      breakout = true;
+      side = "upper";
+    } else if (last.close < lower) {
+      breakout = true;
+      side = "lower";
+    }
   }
 
-  // 2️⃣ REINGRÉS (alerta)
-  if (stage === "breakoutUpper" && last.close < upper) {
-    reingres = true;
-    stage = "reingresUpper";
-  } else if (stage === "breakoutLower" && last.close > lower) {
-    reingres = true;
-    stage = "reingresLower";
+  // 2️⃣ REINGRÉS (stage 1)
+  if (stage === 1) {
+    if (side === "upper" && last.close < upper) {
+      reingres = true;
+    }
+    if (side === "lower" && last.close > lower) {
+      reingres = true;
+    }
   }
 
-  // 3️⃣ ENTRADA (trade)
-  if (stage === "reingresUpper" && last.close < mid) {
-    entrada = true;
-    side = "SHORT";
-    stage = "neutral";
-  } else if (stage === "reingresLower" && last.close > mid) {
-    entrada = true;
-    side = "LONG";
-    stage = "neutral";
+  // 3️⃣ ENTRADA (stage 2)
+  if (stage === 2) {
+    if (side === "upper" && last.close < mid) {
+      entrada = true;
+      side = "SHORT";
+    }
+    if (side === "lower" && last.close > mid) {
+      entrada = true;
+      side = "LONG";
+    }
   }
 
   return {
     breakout,
     reingres,
     entrada,
-    side,
-    stage
+    side
   };
 }
