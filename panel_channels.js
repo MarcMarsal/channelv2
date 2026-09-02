@@ -46,12 +46,8 @@ async function getChannels() {
         upper,
         mid,
         lower,
-        slope,
-        dev,
-        devlen,
-        operable,
-        reason,
         accio,
+        confirm,
         timestamp,
         data_es,
         hora_es,
@@ -67,7 +63,6 @@ async function getChannels() {
 
 
 
-
 // -------------------------------------------------------------
 // TAULA DE CANALS FIAT 15m
 // -------------------------------------------------------------
@@ -75,38 +70,52 @@ function renderChannelsTable(channels) {
   let rows = "";
 
   for (const ch of channels) {
-    const color = ch.operable ? "lime" : "red";
+
+    // Colors FIAT
+    let color = "yellow"; // canal obert sense acció
+    if (ch.confirm) color = "lime"; // canal confirmat
+    else if (ch.accio !== "") color = "cyan"; // acció provisional
 
     rows += `
       <tr style="color:${color}">
         <td>${ch.symbol}</td>
+
         <td>${fmt(ch.upper)}</td>
         <td>${fmt(ch.mid)}</td>
         <td>${fmt(ch.lower)}</td>
-        <td>${fmt(ch.slope)}</td>
-        <td>${fmt(ch.dev)}</td>
-        <td>${fmt(ch.devlen)}</td>
-        <td>${ch.operable ? "OPERABLE" : "NO"}</td>
-        <td>${ch.reason || "-"}</td>
+
+        <td>${fmt(ch.open)}</td>
+        <td>${fmt(ch.close)}</td>
+
+        <td>${ch.accio || "-"}</td>
+        <td>${ch.confirm ? "sí" : "no"}</td>
+
+        <td>${ch.data_es}</td>
+        <td>${ch.hora_es}</td>
       </tr>
     `;
   }
 
   return `
-    <h2>Canals FIAT 15m (últim per cada cripto)</h2>
+    <h2>Canals FIAT 15m (últims 3 per cripto)</h2>
 
     <table>
       <thead>
         <tr>
           <th>Symbol</th>
+
           <th>Upper</th>
           <th>Mid</th>
           <th>Lower</th>
-          <th>Slope</th>
-          <th>Dev</th>
-          <th>DevLen</th>
-          <th>Operable</th>
-          <th>Reason</th>
+
+          <th>Preu inicial</th>
+          <th>Preu final</th>
+
+          <th>Acció</th>
+          <th>Confirm</th>
+
+          <th>Data</th>
+          <th>Hora</th>
         </tr>
       </thead>
       <tbody>
