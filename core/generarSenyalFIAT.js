@@ -1,7 +1,9 @@
 // generarSenyalFIAT
 
-export async function generarSenyalFIAT(db, symbol, timestamp, accio, open, close, upper, lower) {
-    await db.query(`
+import { client } from "../db/client.js";
+
+export async function generarSenyalFIAT(symbol, timestamp, accio, open, close, upper, lower) {
+    await client.query(`
         INSERT INTO signals_fiat (
             symbol, timestamp, accio, open, close, upper, lower, created_at
         ) VALUES (
