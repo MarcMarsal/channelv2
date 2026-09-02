@@ -82,6 +82,9 @@ export async function processSymbol(symbol, timeframe) {
  // -------------------------------------------------------------
 // 4) FIAT STAGE — punxada → reingrés → entrada
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// 4) FIAT STAGE — punxada → reingrés → entrada
+// -------------------------------------------------------------
 
 // Carregar stage de la DB
 let stageRes = await client.query(
@@ -92,10 +95,12 @@ let stageRes = await client.query(
 let stage = stageRes.rows.length ? stageRes.rows[0].stage : 0;
 if (stage === null) stage = 0;
 
-// Detectar punxada o reingrés
+// Detectar punxada, reingrés i entrada FIAT
 const sig = detectChannelEntry(candles, channel);
 
-// --- Stage 0: buscar punxada ---
+// -------------------------------------------------------------
+// STAGE 0 → PUNXADA FIAT
+// -------------------------------------------------------------
 if (stage === 0 && sig?.punxada) {
   await client.query(
     `INSERT INTO channel_stage(symbol, timeframe, stage)
@@ -103,34 +108,56 @@ if (stage === 0 && sig?.punxada) {
      ON CONFLICT (symbol,timeframe) DO UPDATE SET stage = $3`,
     [symbol, timeframe, 1]
   );
-  return; // només avis
+  return;   // Esperar reingrés
 }
 
-// --- Stage 1: buscar reingrés ---
+// -------------------------------------------------------------
+// STAGE 1 → REINGRÉS FIAT
+// -------------------------------------------------------------
 if (stage === 1 && sig?.reingres) {
+
+  // Validació extra: la punxada ha de ser real
+  const wasOutside = candles.slice(-3).some(c =>
+    c.low < classification.lower || c.high > classification.upper
+  );
+
+  if (!wasOutside) {
+    // Reingrés fals → reset
+    await client.query(
+      `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
+      [symbol, timeframe]
+    );
+    return;
+  }
+
+  // Reingrés confirmat → stage 2
   await client.query(
     `UPDATE channel_stage SET stage = 2 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
-  return; 
+  return;   // Esperar entrada institucional
 }
 
-// --- Stage 2: ENTRADA FIAT ---
-if (stage === 2) {
+// -------------------------------------------------------------
+// STAGE 2 → ENTRADA FIAT INSTITUCIONAL
+// -------------------------------------------------------------
+if (stage === 2 && sig?.entrada) {
 
-  // Construir entrada FIAT
   const entry = {
     symbol,
     timeframe,
     type: sig.side === "lower" ? "LONG" : "SHORT",
     entry: lastCandle.close,
     tp: channel.mid,
+
     sl: sig.side === "lower"
       ? channel.lower - Math.abs(lastCandle.close - channel.lower)
       : channel.upper + Math.abs(lastCandle.close - channel.upper),
+
     rr: sig.side === "lower"
       ? (channel.mid - lastCandle.close) / (lastCandle.close - channel.lower)
       : (lastCandle.close - channel.mid) / (channel.upper - lastCandle.close),
+
     timestamp: lastCandle.timestamp,
     color: "green",
 
@@ -156,9 +183,16 @@ if (stage === 2) {
     `UPDATE channel_stage SET stage = 0 WHERE symbol = $1 AND timeframe = $2`,
     [symbol, timeframe]
   );
-}
+
+  return;
 }
 
+// -------------------------------------------------------------
+// Si stage = 2 però NO hi ha entrada → NO fer res
+// -------------------------------------------------------------
+if (stage === 2 && !sig?.entrada) {
+  return;   // Esperar entrada real
+}
 
 // -------------------------------------------------------------
 // LOOP PRINCIPAL FIAT
