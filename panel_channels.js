@@ -1,4 +1,4 @@
-// panel_channels.js — FIAT‑PRO (sense mode validació)
+// panel_channels.js — FIAT 15m (punxada + entrada + TP/SL/RR)
 
 import http from "http";
 import { initDB, client } from "./db/client.js";
@@ -9,7 +9,7 @@ function fmt(n) {
 }
 
 // -------------------------------------------------------------
-// LLEGIR ÚLTIMES ALERTES FIAT‑PRO
+// LLEGIR ÚLTIMES ALERTES FIAT 15m
 // -------------------------------------------------------------
 async function getActiveSignals() {
   const q = await client.query(`
@@ -18,12 +18,15 @@ async function getActiveSignals() {
       symbol,
       timeframe,
       type,
+      stage,
       entry,
       tp,
       sl,
+      rr,
       color,
       slope,
       dev,
+      devlen,
       mid,
       timestamp_ms,
       date_es,
@@ -31,14 +34,14 @@ async function getActiveSignals() {
       created_at
     FROM signals_channels
     ORDER BY created_at DESC
-    LIMIT 20
+    LIMIT 30
   `);
 
   return q.rows;
 }
 
 // -------------------------------------------------------------
-// LLEGIR ÚLTIMS CANALS FIAT‑PRO (un per symbol)
+// LLEGIR ÚLTIMS CANALS FIAT 15m (un per symbol)
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
@@ -66,7 +69,7 @@ async function getChannels() {
 }
 
 // -------------------------------------------------------------
-// TAULA DE CANALS FIAT‑PRO
+// TAULA DE CANALS FIAT 15m
 // -------------------------------------------------------------
 function renderChannelsTable(channels) {
   let rows = "";
@@ -92,7 +95,7 @@ function renderChannelsTable(channels) {
   }
 
   return `
-    <h2>Canals FIAT‑PRO (últim per cada cripto)</h2>
+    <h2>Canals FIAT 15m (últim per cada cripto)</h2>
 
     <table>
       <thead>
@@ -118,26 +121,28 @@ function renderChannelsTable(channels) {
 }
 
 // -------------------------------------------------------------
-// TAULA D'ALERTES FIAT‑PRO
+// TAULA D'ALERTES FIAT 15m
 // -------------------------------------------------------------
 function renderActiveSignalsTable(signals) {
   let rows = "";
 
   for (const s of signals) {
     let color = s.color || "#00ff00";
-    if (color.toLowerCase() === "blue") color = "cyan";
 
     rows += `
-      <tr style="color: ${color}">
+      <tr style="color:${color}">
         <td>${s.id}</td>
         <td>${s.symbol}</td>
         <td>${s.timeframe}</td>
         <td>${s.type}</td>
+        <td>${s.stage}</td>
         <td>${fmt(s.entry)}</td>
         <td>${fmt(s.tp)}</td>
         <td>${fmt(s.sl)}</td>
+        <td>${fmt(s.rr)}</td>
         <td>${fmt(s.slope)}</td>
         <td>${fmt(s.dev)}</td>
+        <td>${fmt(s.devlen)}</td>
         <td>${fmt(s.mid)}</td>
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
@@ -147,7 +152,7 @@ function renderActiveSignalsTable(signals) {
   }
 
   return `
-    <h2>Últimes 20 alertes FIAT‑PRO Channels</h2>
+    <h2>Últimes 30 alertes FIAT 15m (punxada + entrada)</h2>
     <table>
       <thead>
         <tr>
@@ -155,11 +160,14 @@ function renderActiveSignalsTable(signals) {
           <th>Symbol</th>
           <th>TF</th>
           <th>Tipus</th>
+          <th>Stage</th>
           <th>Entrada</th>
           <th>TP</th>
           <th>SL</th>
+          <th>RR</th>
           <th>Slope</th>
           <th>Dev</th>
+          <th>DevLen</th>
           <th>Mid</th>
           <th>Data</th>
           <th>Hora</th>
@@ -174,7 +182,7 @@ function renderActiveSignalsTable(signals) {
 }
 
 // -------------------------------------------------------------
-// PANELL PRINCIPAL
+// PANELL PRINCIPAL FIAT 15m
 // -------------------------------------------------------------
 async function startPanel() {
   await initDB();
@@ -217,7 +225,7 @@ async function startPanel() {
         </style>
       </head>
       <body>
-        <h1>Panell FIAT‑PRO Channels</h1>
+        <h1>Panell FIAT 15m — LonesomeTheBlue</h1>
         <p><b>Última actualització:</b> ${lastUpdate}</p>
 
         ${channelsHTML}
@@ -233,10 +241,10 @@ async function startPanel() {
     }
 
     res.writeHead(200);
-    res.end("Panell FIAT‑PRO Channels OK");
+    res.end("Panell FIAT 15m OK");
   }).listen(process.env.PORT || 3000);
 
-  console.log("Panell FIAT‑PRO Channels en marxa");
+  console.log("Panell FIAT 15m en marxa");
 }
 
 startPanel();
