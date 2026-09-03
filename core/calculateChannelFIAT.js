@@ -1,29 +1,30 @@
-// fitxer calculateChannelFIAT.js
-
 export function calculateChannelFIAT(candles) {
-    const len = 60; // tram del canal
+    const len = 60;
+
+    // -------------------------------------------------------------
+    // 0) DADES INSUFICIENTS
+    // -------------------------------------------------------------
     if (candles.length < len) {
         return {
-            slope: 0,
-            intercept: 0,
-            dev: 0,
-            devlen: 0,
-            mid: 0,
-            upper: 0,
-            lower: 0,
+            slope: null,
+            intercept: null,
+            dev: null,
+            devlen: null,
+            mid: null,
+            upper: null,
+            lower: null,
             operable: false,
             reason: "insuficient_data"
         };
     }
 
-    // Agafem les últimes 60 veles
+    // Últimes 60 veles
     const slice = candles.slice(-len);
-    const closes = slice.map(c => c.close);
+    const closes = slice.map(c => Number(c.close));
 
-    // ------------------------------
-    // 1) REGRESSIÓ LINEAL CANÒNICA
-    // ------------------------------
-
+    // -------------------------------------------------------------
+    // 1) REGRESSIÓ LINEAL
+    // -------------------------------------------------------------
     const xs = [...Array(len).keys()]; // 0..59
 
     const meanX = xs.reduce((a, b) => a + b, 0) / len;
@@ -39,39 +40,87 @@ export function calculateChannelFIAT(candles) {
         den += dx * dx;
     }
 
-    const slope = den === 0 ? 0 : num / den;
+    if (den === 0) {
+        return {
+            slope: null,
+            intercept: null,
+            dev: null,
+            devlen: null,
+            mid: null,
+            upper: null,
+            lower: null,
+            operable: false,
+            reason: "den_zero"
+        };
+    }
+
+    const slope = num / den;
     const intercept = meanY - slope * meanX;
 
-    // ------------------------------
+    // -------------------------------------------------------------
     // 2) MID, UPPER, LOWER
-    // ------------------------------
+    // -------------------------------------------------------------
+    const mid = intercept + slope * (len - 1);
 
-    const mid = intercept + slope * (len - 1); // punt final del canal
-
-    // dev = desviació mitjana absoluta
     const deviations = closes.map((c, i) => Math.abs(c - (intercept + slope * i)));
     const dev = deviations.reduce((a, b) => a + b, 0) / len;
 
-    const devlen = dev * 1.6; // factor LonesomeTheBlue
+    if (!dev || dev === 0) {
+        return {
+            slope,
+            intercept,
+            dev: null,
+            devlen: null,
+            mid,
+            upper: null,
+            lower: null,
+            operable: false,
+            reason: "dev_zero"
+        };
+    }
+
+    const devlen = dev * 1.6;
+
+    if (!devlen || devlen === 0) {
+        return {
+            slope,
+            intercept,
+            dev,
+            devlen: null,
+            mid,
+            upper: null,
+            lower: null,
+            operable: false,
+            reason: "devlen_zero"
+        };
+    }
 
     const upper = mid + devlen;
     const lower = mid - devlen;
 
-    // ------------------------------
-    // 3) OPERABLE + REASON
-    // ------------------------------
+    if (upper <= lower) {
+        return {
+            slope,
+            intercept,
+            dev,
+            devlen,
+            mid,
+            upper,
+            lower,
+            operable: false,
+            reason: "upper_lower_invalid"
+        };
+    }
 
+    // -------------------------------------------------------------
+    // 3) OPERABLE
+    // -------------------------------------------------------------
     let operable = true;
     let reason = "";
 
-    if (devlen === 0) {
+    if (Math.abs(slope) > 0.0025) { // FIAT anti-vertical
         operable = false;
-        reason = "devlen_zero";
-    }
-
-    if (slope === 0) {
-        // no bloqueja, només informa
-        reason = reason ? reason + ", slope_zero" : "slope_zero";
+        reason = "vertical_mode";
     }
 
     return {
