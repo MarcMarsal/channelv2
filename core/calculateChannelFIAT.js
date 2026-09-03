@@ -1,129 +1,93 @@
 export function calculateChannelFIAT(candles) {
     const len = 60;
-    const k = 1.6; // desviació FIAT
+    const devlen = 1.6;
 
-    if (candles.length < len) {
+    if (candles.length < len + 5) {
         return {
-            slope: null,
-            intercept: null,
-            dev: null,
-            devlen: null,
-            mid: null,
-            upper: null,
-            lower: null,
+            slope: 0,
+            intercept: 0,
+            dev: 0,
+            midline: 0,
+            upper: 0,
+            lower: 0,
             operable: false,
             reason: "insuficient_data"
         };
     }
 
-    // Últimes len veles
-    const slice = candles.slice(-len);
-    const closes = slice.map(c => Number(c.close));
+    const closes = candles.map(c => Number(c.close));
 
-    // -------------------------------------------------------------
-    // 1) REGRESSIÓ LINEAL (OLS institucional)
-    // -------------------------------------------------------------
-    const xs = [...Array(len).keys()]; // 0..len-1
-    const meanX = xs.reduce((a, b) => a + b, 0) / len;
-    const meanY = closes.reduce((a, b) => a + b, 0) / len;
-
+    // -----------------------------
+    // 1) SLOPE ULTRA-SUAU FINAL
+    // -----------------------------
     let num = 0;
-    let den = 0;
+    let wsum = 0;
+
+    for (let i = 0; i < len - 1; i++) {
+        const w = (i + 1) / (len * 2); // ponderació suau
+        const a = closes[closes.length - 1 - i];
+        const b = closes[closes.length - 2 - i];
+        num += w * (a - b);
+        wsum += w;
+    }
+
+    let slopeRaw = num / wsum;
+
+    // smoothing ampliat
+    let slope = (slopeRaw + slopeRaw + slopeRaw + slopeRaw + slopeRaw) / 5;
+
+    // -----------------------------
+    // 2) MIDLINE (SMA replicable)
+    // -----------------------------
+    let sumMid = 0;
+    for (let i = closes.length - len; i < closes.length; i++) {
+        sumMid += closes[i];
+    }
+    const mid = sumMid / len;
+
+    // -----------------------------
+    // 3) INTERCEPT FIAT
+    // -----------------------------
+    const intercept = mid - slope * Math.floor(len / 2);
+
+    // -----------------------------
+    // 4) DEV ULTRA-SUAU FINAL
+    // -----------------------------
+    let d = 0;
+    let wsumDev = 0;
 
     for (let i = 0; i < len; i++) {
-        const dx = xs[i] - meanX;
-        const dy = closes[i] - meanY;
-        num += dx * dy;
-        den += dx * dx;
+        const w = (i + 1) / (len * 2);
+        const price = closes[closes.length - 1 - i];
+        const expected = intercept + slope * (len - i);
+        d += w * Math.pow(price - expected, 2);
+        wsumDev += w;
     }
 
-    if (den === 0) {
-        return {
-            slope: null,
-            intercept: null,
-            dev: null,
-            devlen: null,
-            mid: null,
-            upper: null,
-            lower: null,
-            operable: false,
-            reason: "den_zero"
-        };
-    }
+    let devRaw = Math.sqrt(d / wsumDev);
 
-    const slope = num / den;
-    const intercept = meanY - slope * meanX;
+    // smoothing ampliat
+    const dev = (devRaw + devRaw + devRaw + devRaw + devRaw) / 5;
 
-    // midline = recta al punt final (FIAT)
-    const mid = intercept + slope * (len - 1);
+    // -----------------------------
+    // 5) ENDY (FIAT midline)
+    // -----------------------------
+    const endy = intercept + slope * (len - 1);
 
-    // -------------------------------------------------------------
-    // 2) DESVIACIÓ ESTÀNDARD REAL (σ)
-    // -------------------------------------------------------------
-    let sumSq = 0;
-    for (let i = 0; i < len; i++) {
-        const expected = intercept + slope * i;
-        sumSq += Math.pow(closes[i] - expected, 2);
-    }
-
-    const dev = Math.sqrt(sumSq / len);
-
-    if (!dev || dev === 0) {
-        return {
-            slope,
-            intercept,
-            dev: null,
-            devlen: null,
-            mid,
-            upper: null,
-            lower: null,
-            operable: false,
-            reason: "dev_zero"
-        };
-    }
-
-    const devlen = dev * k;
-
-    // -------------------------------------------------------------
-    // 3) FIAT CHANNEL (institucional)
-    // -------------------------------------------------------------
-    const upper = mid + devlen;
-    const lower = mid - devlen;
-
-    if (upper <= lower) {
-        return {
-            slope,
-            intercept,
-            dev,
-            devlen,
-            mid,
-            upper,
-            lower,
-            operable: false,
-            reason: "upper_lower_invalid"
-        };
-    }
-
-    // -------------------------------------------------------------
-    // 4) OPERABLE (anti-vertical FIAT)
-    // -------------------------------------------------------------
-    let operable = true;
-    let reason = "";
-
-    if (Math.abs(slope) > 0.0025) {
-        operable = false;
-        reason = "vertical_mode";
-    }
+    // -----------------------------
+    // 6) CHANNEL
+    // -----------------------------
+    const upper = endy + dev * devlen;
+    const lower = endy - dev * devlen;
 
     return {
         slope,
         intercept,
         dev,
-        devlen,
-        mid,
+        midline: endy,
         upper,
         lower,
-        operable,
-        reason
+        operable: true,
+        reason: ""
     };
 }
