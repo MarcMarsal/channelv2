@@ -1,12 +1,13 @@
 export function calculateChannelFIAT(candles) {
     const len = 60;
-    const devlen = 1.6;
+    const devlenFactor = 1.6;
 
     if (candles.length < len + 5) {
         return {
             slope: 0,
             intercept: 0,
             dev: 0,
+            devlen: 0,
             midline: 0,
             upper: 0,
             lower: 0,
@@ -17,14 +18,12 @@ export function calculateChannelFIAT(candles) {
 
     const closes = candles.map(c => Number(c.close));
 
-    // -----------------------------
-    // 1) SLOPE ULTRA-SUAU FINAL
-    // -----------------------------
+    // 1) slope
     let num = 0;
     let wsum = 0;
 
     for (let i = 0; i < len - 1; i++) {
-        const w = (i + 1) / (len * 2); // ponderació suau
+        const w = (i + 1) / (len * 2);
         const a = closes[closes.length - 1 - i];
         const b = closes[closes.length - 2 - i];
         num += w * (a - b);
@@ -32,27 +31,19 @@ export function calculateChannelFIAT(candles) {
     }
 
     let slopeRaw = num / wsum;
-
-    // smoothing ampliat
     let slope = (slopeRaw + slopeRaw + slopeRaw + slopeRaw + slopeRaw) / 5;
 
-    // -----------------------------
-    // 2) MIDLINE (SMA replicable)
-    // -----------------------------
+    // 2) mid
     let sumMid = 0;
     for (let i = closes.length - len; i < closes.length; i++) {
         sumMid += closes[i];
     }
     const mid = sumMid / len;
 
-    // -----------------------------
-    // 3) INTERCEPT FIAT
-    // -----------------------------
+    // 3) intercept
     const intercept = mid - slope * Math.floor(len / 2);
 
-    // -----------------------------
-    // 4) DEV ULTRA-SUAU FINAL
-    // -----------------------------
+    // 4) dev
     let d = 0;
     let wsumDev = 0;
 
@@ -65,25 +56,22 @@ export function calculateChannelFIAT(candles) {
     }
 
     let devRaw = Math.sqrt(d / wsumDev);
-
-    // smoothing ampliat
     const dev = (devRaw + devRaw + devRaw + devRaw + devRaw) / 5;
 
-    // -----------------------------
-    // 5) ENDY (FIAT midline)
-    // -----------------------------
+    // 5) endy
     const endy = intercept + slope * (len - 1);
 
-    // -----------------------------
-    // 6) CHANNEL
-    // -----------------------------
-    const upper = endy + dev * devlen;
-    const lower = endy - dev * devlen;
+    // 6) devlen (el que espera la BD)
+    const devlen = dev * devlenFactor;
+
+    const upper = endy + devlen;
+    const lower = endy - devlen;
 
     return {
         slope,
         intercept,
         dev,
+        devlen,
         midline: endy,
         upper,
         lower,
