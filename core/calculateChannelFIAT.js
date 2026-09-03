@@ -8,6 +8,7 @@ export function calculateChannelFIAT(candles) {
             intercept: 0,
             dev: 0,
             devlen: 0,
+            mid: 0,
             midline: 0,
             upper: 0,
             lower: 0,
@@ -33,7 +34,7 @@ export function calculateChannelFIAT(candles) {
     let slopeRaw = num / wsum;
     let slope = (slopeRaw + slopeRaw + slopeRaw + slopeRaw + slopeRaw) / 5;
 
-    // 2) mid
+    // 2) mid (SMA)
     let sumMid = 0;
     for (let i = closes.length - len; i < closes.length; i++) {
         sumMid += closes[i];
@@ -61,7 +62,7 @@ export function calculateChannelFIAT(candles) {
     // 5) endy
     const endy = intercept + slope * (len - 1);
 
-    // 6) devlen (el que espera la BD)
+    // 6) devlen
     const devlen = dev * devlenFactor;
 
     const upper = endy + devlen;
@@ -72,6 +73,7 @@ export function calculateChannelFIAT(candles) {
         intercept,
         dev,
         devlen,
+        mid,          // ← AIXÒ ÉS EL QUE FALTAVA
         midline: endy,
         upper,
         lower,
