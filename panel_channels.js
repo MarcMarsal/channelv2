@@ -67,27 +67,20 @@ async function getChannels() {
 function renderChannelsTable(channels) {
   let rows = "";
 
-  // FILTRE FIAT (localStorage)
-  const filterMode = `
-    <script>
-      document.write(localStorage.getItem("filterMode") || "all");
-    </script>
-  `;
-
   for (const ch of channels) {
 
-    // Aplicar filtre
-    if (filterMode.includes("open") && ch.confirm === true) {
-      continue; // només mostrar canals oberts
-    }
-
-    // Colors FIAT
-    let color = "yellow"; // canal obert sense acció
-    if (ch.confirm) color = "lime"; // canal confirmat
-    else if (ch.accio !== "") color = "cyan"; // acció provisional
+    let color = "yellow";
+    if (ch.confirm) color = "lime";
+    else if (ch.accio !== "") color = "cyan";
 
     rows += `
-      <tr style="color:${color}">
+      <tr data-symbol="${ch.symbol}"
+          data-accio="${ch.accio}"
+          data-confirm="${ch.confirm}"
+          data-operable="${ch.operable}"
+          data-vertical="${ch.reason === 'vertical'}"
+          style="color:${color}">
+        
         <td>${ch.symbol}</td>
 
         <td>${fmt(ch.upper)}</td>
@@ -107,25 +100,69 @@ function renderChannelsTable(channels) {
   }
 
   return `
-    <h2>Canals FIAT 15m (últims 3 per cripto)</h2>
+    <h2>Canals FIAT 15m (últims 6 per cripto)</h2>
 
     <label style="color:#0f0; font-size:18px;">
-      Mostrar:
+      Filtre:
       <select id="filterMode" style="font-size:16px; padding:4px;">
         <option value="all">Tots els canals</option>
-        <option value="open">Només canals oberts</option>
+        <option value="accio">Només canals amb acció</option>
+        <option value="confirm">Només confirmats</option>
+        <option value="operable">Només operables</option>
+        <option value="novvertical">Sense verticals</option>
+      </select>
+    </label>
+
+    <label style="color:#0f0; font-size:18px; margin-left:20px;">
+      Symbol:
+      <select id="symbolFilter" style="font-size:16px; padding:4px;">
+        <option value="all">Tots</option>
+        ${[...new Set(channels.map(c => c.symbol))]
+          .map(sym => `<option value="${sym}">${sym}</option>`).join("")}
       </select>
     </label>
 
     <script>
-      // Carregar filtre guardat
-      const saved = localStorage.getItem("filterMode") || "all";
-      document.getElementById("filterMode").value = saved;
+      const filterMode = localStorage.getItem("filterMode") || "all";
+      const symbolFilter = localStorage.getItem("symbolFilter") || "all";
 
-      // Guardar quan l’usuari el canvia
-      document.getElementById("filterMode").addEventListener("change", (e) => {
+      document.getElementById("filterMode").value = filterMode;
+      document.getElementById("symbolFilter").value = symbolFilter;
+
+      document.getElementById("filterMode").addEventListener("change", e => {
         localStorage.setItem("filterMode", e.target.value);
-        location.reload(); // refrescar per aplicar el filtre
+        location.reload();
+      });
+
+      document.getElementById("symbolFilter").addEventListener("change", e => {
+        localStorage.setItem("symbolFilter", e.target.value);
+        location.reload();
+      });
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const mode = localStorage.getItem("filterMode") || "all";
+        const sym = localStorage.getItem("symbolFilter") || "all";
+
+        const rows = document.querySelectorAll("table tbody tr");
+
+        rows.forEach(row => {
+          const accio = row.dataset.accio;
+          const confirm = row.dataset.confirm === "true";
+          const operable = row.dataset.operable === "true";
+          const vertical = row.dataset.vertical === "true";
+          const symbol = row.dataset.symbol;
+
+          let hide = false;
+
+          if (mode === "accio" && accio === "") hide = true;
+          if (mode === "confirm" && !confirm) hide = true;
+          if (mode === "operable" && !operable) hide = true;
+          if (mode === "novvertical" && vertical) hide = true;
+
+          if (sym !== "all" && symbol !== sym) hide = true;
+
+          row.style.display = hide ? "none" : "";
+        });
       });
     </script>
 
@@ -135,17 +172,13 @@ function renderChannelsTable(channels) {
       <thead>
         <tr>
           <th>Symbol</th>
-
           <th>Upper</th>
           <th>Mid</th>
           <th>Lower</th>
-
-          <th>Preu inicial</th>
-          <th>Preu final</th>
-
+          <th>Open</th>
+          <th>Close</th>
           <th>Acció</th>
           <th>Confirm</th>
-
           <th>Data</th>
           <th>Hora</th>
         </tr>
@@ -156,6 +189,7 @@ function renderChannelsTable(channels) {
     </table>
   `;
 }
+
 
 // -------------------------------------------------------------
 // TAULA D'ALERTES FIAT 15m
