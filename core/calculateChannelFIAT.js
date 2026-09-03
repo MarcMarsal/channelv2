@@ -19,45 +19,43 @@ export function calculateChannelFIAT(candles) {
 
     const closes = candles.map(c => Number(c.close));
 
-    // 1) slope
+    // WINDOW EXACTA com PineScript
+    const window = closes.slice(-len);
+
+    // 1) slope ultrasuau final
     let num = 0;
     let wsum = 0;
 
     for (let i = 0; i < len - 1; i++) {
         const w = (i + 1) / (len * 2);
-        const a = closes[closes.length - 1 - i];
-        const b = closes[closes.length - 2 - i];
-        num += w * (a - b);
+        num += w * (window[i] - window[i + 1]);
         wsum += w;
     }
 
-    let slopeRaw = num / wsum;
-    let slope = (slopeRaw + slopeRaw + slopeRaw + slopeRaw + slopeRaw) / 5;
+    const slopeRaw = num / wsum;
+
+    // smoothing real (no 5× el mateix valor)
+    const slope = slopeRaw; // sense historial no es pot fer smoothing temporal
 
     // 2) mid (SMA)
-    let sumMid = 0;
-    for (let i = closes.length - len; i < closes.length; i++) {
-        sumMid += closes[i];
-    }
-    const mid = sumMid / len;
+    const mid = window.reduce((a, b) => a + b, 0) / len;
 
     // 3) intercept
     const intercept = mid - slope * Math.floor(len / 2);
 
-    // 4) dev
+    // 4) dev ultrasuau final
     let d = 0;
     let wsumDev = 0;
 
     for (let i = 0; i < len; i++) {
         const w = (i + 1) / (len * 2);
-        const price = closes[closes.length - 1 - i];
         const expected = intercept + slope * (len - i);
-        d += w * Math.pow(price - expected, 2);
+        d += w * Math.pow(window[i] - expected, 2);
         wsumDev += w;
     }
 
-    let devRaw = Math.sqrt(d / wsumDev);
-    const dev = (devRaw + devRaw + devRaw + devRaw + devRaw) / 5;
+    const devRaw = Math.sqrt(d / wsumDev);
+    const dev = devRaw; // igual que slope: sense historial no hi ha smoothing
 
     // 5) endy
     const endy = intercept + slope * (len - 1);
@@ -73,7 +71,7 @@ export function calculateChannelFIAT(candles) {
         intercept,
         dev,
         devlen,
-        mid: endy,          // ← AIXÒ ÉS EL QUE FALTAVA
+        mid: endy,
         midline: endy,
         upper,
         lower,
