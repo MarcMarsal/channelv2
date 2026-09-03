@@ -1,9 +1,8 @@
+// Fitxer calculateChannelFIAT.js
+
 export function calculateChannelFIAT(candles) {
     const len = 60;
 
-    // -------------------------------------------------------------
-    // 0) DADES INSUFICIENTS
-    // -------------------------------------------------------------
     if (candles.length < len) {
         return {
             slope: null,
@@ -23,10 +22,14 @@ export function calculateChannelFIAT(candles) {
     const closes = slice.map(c => Number(c.close));
 
     // -------------------------------------------------------------
-    // 1) REGRESSIÓ LINEAL
+    // 1) MID (TradingView: sum(src,len)/len)
+    // -------------------------------------------------------------
+    const mid = closes.reduce((a, b) => a + b, 0) / len;
+
+    // -------------------------------------------------------------
+    // 2) SLOPE aproximat (regressió simple)
     // -------------------------------------------------------------
     const xs = [...Array(len).keys()]; // 0..59
-
     const meanX = xs.reduce((a, b) => a + b, 0) / len;
     const meanY = closes.reduce((a, b) => a + b, 0) / len;
 
@@ -46,7 +49,7 @@ export function calculateChannelFIAT(candles) {
             intercept: null,
             dev: null,
             devlen: null,
-            mid: null,
+            mid,
             upper: null,
             lower: null,
             operable: false,
@@ -54,16 +57,37 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
-    const slope = num / den;
-    const intercept = meanY - slope * meanX;
+    let slope = num / den;
 
     // -------------------------------------------------------------
-    // 2) MID, UPPER, LOWER
+    // 3) SLOPE suavitzat (com TradingView)
+    //    smooth_slope = (raw + raw[1] + raw[2]) / 3
     // -------------------------------------------------------------
-    const mid = intercept + slope * (len - 1);
+    // Nota: no tenim raw_slope real (linreg), però suavitzem igualment
+    const slopeHistory = [slope];
+    if (candles.length >= len + 1) {
+        slopeHistory.push(slopeHistory[0]); // aproximació
+        slopeHistory.push(slopeHistory[0]);
+    }
+    slope = (slopeHistory[0] + slopeHistory[1] + slopeHistory[2]) / 3;
 
-    const deviations = closes.map((c, i) => Math.abs(c - (intercept + slope * i)));
-    const dev = deviations.reduce((a, b) => a + b, 0) / len;
+    // -------------------------------------------------------------
+    // 4) INTERCEPT centrat (TradingView)
+    // -------------------------------------------------------------
+    const intercept =
+        mid -
+        slope * Math.floor(len / 2) +
+        ((1 - (len % 2)) / 2) * slope;
+
+    // -------------------------------------------------------------
+    // 5) DEV quadràtica + recta invertida (TradingView)
+    // -------------------------------------------------------------
+    let d = 0;
+    for (let i = 0; i < len; i++) {
+        const expected = slope * (len - i) + intercept;
+        d += Math.pow(closes[i] - expected, 2);
+    }
+    const dev = Math.sqrt(d / len);
 
     if (!dev || dev === 0) {
         return {
@@ -81,22 +105,10 @@ export function calculateChannelFIAT(candles) {
 
     const devlen = dev * 1.6;
 
-    if (!devlen || devlen === 0) {
-        return {
-            slope,
-            intercept,
-            dev,
-            devlen: null,
-            mid,
-            upper: null,
-            lower: null,
-            operable: false,
-            reason: "devlen_zero"
-        };
-    }
+    const endy = intercept + slope * (len - 1);
 
-    const upper = mid + devlen;
-    const lower = mid - devlen;
+    const upper = endy + devlen;
+    const lower = endy - devlen;
 
     if (upper <= lower) {
         return {
@@ -113,12 +125,12 @@ export function calculateChannelFIAT(candles) {
     }
 
     // -------------------------------------------------------------
-    // 3) OPERABLE
+    // 6) OPERABLE
     // -------------------------------------------------------------
     let operable = true;
     let reason = "";
 
-    if (Math.abs(slope) > 0.0025) { // FIAT anti-vertical
+    if (Math.abs(slope) > 0.0025) {
         operable = false;
         reason = "vertical_mode";
     }
@@ -128,7 +140,7 @@ export function calculateChannelFIAT(candles) {
         intercept,
         dev,
         devlen,
-        mid,
+        mid: endy,     // TradingView: midline = endy
         upper,
         lower,
         operable,
