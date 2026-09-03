@@ -1,4 +1,4 @@
-// generarSenyalFIAT.js
+// generarSenyalFIAT.js — FIAT LonesomeTheBlue (versió institucional)
 
 import { client } from "../db/client.js";
 import { formatSpainDate, formatSpainTime } from "./utils.js";
@@ -19,7 +19,7 @@ export async function generarSenyalFIAT(
     close,
     upper,
     lower,
-    canal      // objecte amb slope, intercept, endy, dev, devlen, mid, len, operable, reason, stage, rr
+    canal      // slope, intercept, endy, dev, devlen, mid, len, operable, reason, stage, rr
 ) {
 
     if (!canal) {
@@ -43,32 +43,31 @@ export async function generarSenyalFIAT(
 
     const color = colorFIAT(accio);
 
-    // Determinar si és trade (només reingressos)
+    // Només reingressos generen trade
     const isTrade =
         accio === "reingres_inferior" ||
         accio === "reingres_superior";
 
-    // FIAT: entry/tp/sl segons LONG/SHORT
     let entry = null;
     let tp = null;
     let sl = null;
 
     if (accio === "reingres_inferior") {
-        // LONG: reingrés per baix
+        // LONG
         entry = open;
         tp    = upper;
         sl    = lower;
     }
 
     if (accio === "reingres_superior") {
-        // SHORT: reingrés per dalt
+        // SHORT
         entry = open;
         tp    = lower;
         sl    = upper;
     }
 
-    // Breakouts: només alerta, no trade
-    // closed = true per breakout, false per reingrés (trade obert)
+    // Breakouts → alerta (closed = true)
+    // Reingressos → trade obert (closed = false)
     const closed = isTrade ? false : true;
 
     await client.query(`
@@ -108,30 +107,31 @@ export async function generarSenyalFIAT(
             $12, $13, $14, $15, $16, $17,
             $18, $19,
             $20,
-            $21
+            $21,
+            $22
         )
     `, [
-        symbol,
-        accio,
-        color,
-        entry,
-        tp,
-        sl,
-        timestamp,
-        date_es,
-        hora_es,
-        timestamp_es,
-        closed,
-        canal.slope,
-        canal.intercept,
-        canal.endy,
-        canal.dev,
-        canal.devlen,
-        canal.mid,
-        canal.len,
-        canal.operable,
-        canal.reason,
-        canal.stage || null,
-        canal.rr || null
+        symbol,            // $1
+        accio,             // $2
+        color,             // $3
+        entry,             // $4
+        tp,                // $5
+        sl,                // $6
+        timestamp,         // $7
+        date_es,           // $8
+        hora_es,           // $9
+        timestamp_es,      // $10
+        closed,            // $11
+        canal.slope,       // $12
+        canal.intercept,   // $13
+        canal.endy,        // $14
+        canal.dev,         // $15
+        canal.devlen,      // $16
+        canal.mid,         // $17
+        canal.len,         // $18
+        canal.operable,    // $19
+        canal.reason,      // $20
+        canal.stage || null, // $21
+        canal.rr || null     // $22
     ]);
 }
