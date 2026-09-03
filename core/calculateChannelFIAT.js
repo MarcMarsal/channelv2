@@ -1,9 +1,54 @@
 // Fitxer calculateChannelFIAT.js
 
+// linreg equivalent a TradingView per a un array de valors
+// src: array de números (closes)
+// len: longitud de la finestra (60)
+// offset: desplaçament (0 o 1, com a TradingView)
+// endIndex: índex final (última vela = candles.length - 1)
+function linreg(src, len, offset, endIndex) {
+    const start = endIndex - len + 1 - offset;
+    const end   = endIndex - offset;
+
+    if (start < 0) return null;
+
+    const xs = [];
+    const ys = [];
+
+    for (let i = 0; i < len; i++) {
+        xs.push(i);
+        ys.push(src[start + i]);
+    }
+
+    const meanX = xs.reduce((a, b) => a + b, 0) / len;
+    const meanY = ys.reduce((a, b) => a + b, 0) / len;
+
+    let num = 0;
+    let den = 0;
+
+    for (let i = 0; i < len; i++) {
+        const dx = xs[i] - meanX;
+        const dy = ys[i] - meanY;
+        num += dx * dy;
+        den += dx * dx;
+    }
+
+    if (den === 0) return null;
+
+    const slope = num / den;
+    const intercept = meanY - slope * meanX;
+
+    // valor de la recta al punt "len - 1" (equivalent a endy)
+    const value = intercept + slope * (len - 1);
+
+    return { slope, intercept, value };
+}
+
+
 export function calculateChannelFIAT(candles) {
     const len = 60;
+    const devlenFactor = 1.6;
 
-    if (candles.length < len) {
+    if (candles.length < len + 2) {
         return {
             slope: null,
             intercept: null,
@@ -17,75 +62,51 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
-    // Últimes 60 veles
-    const slice = candles.slice(-len);
-    const closes = slice.map(c => Number(c.close));
+    const endIndex = candles.length - 1;
+    const closes = candles.map(c => Number(c.close));
 
-    // -------------------------------------------------------------
-    // 1) MID (TradingView: sum(src,len)/len)
-    // -------------------------------------------------------------
-    const mid = closes.reduce((a, b) => a + b, 0) / len;
-
-    // -------------------------------------------------------------
-    // 2) SLOPE aproximat (regressió simple)
-    // -------------------------------------------------------------
-    const xs = [...Array(len).keys()]; // 0..59
-    const meanX = xs.reduce((a, b) => a + b, 0) / len;
-    const meanY = closes.reduce((a, b) => a + b, 0) / len;
-
-    let num = 0;
-    let den = 0;
-
-    for (let i = 0; i < len; i++) {
-        const dx = xs[i] - meanX;
-        const dy = closes[i] - meanY;
-        num += dx * dy;
-        den += dx * dx;
+    // --- FIAT MID (sum(src,len)/len) ---
+    let sum = 0;
+    for (let i = endIndex - len + 1; i <= endIndex; i++) {
+        sum += closes[i];
     }
+    const mid = sum / len;
 
-    if (den === 0) {
+    // --- FIAT SLOPE (linreg derivat + suavitzat) ---
+    const lr0 = linreg(closes, len, 0, endIndex);
+    const lr1 = linreg(closes, len, 1, endIndex);
+
+    if (!lr0 || !lr1) {
         return {
             slope: null,
             intercept: null,
             dev: null,
             devlen: null,
-            mid,
+            mid: null,
             upper: null,
             lower: null,
             operable: false,
-            reason: "den_zero"
+            reason: "linreg_invalid"
         };
     }
 
-    let slope = num / den;
+    const raw_slope = lr0.value - lr1.value;
 
-    // -------------------------------------------------------------
-    // 3) SLOPE suavitzat (com TradingView)
-    //    smooth_slope = (raw + raw[1] + raw[2]) / 3
-    // -------------------------------------------------------------
-    // Nota: no tenim raw_slope real (linreg), però suavitzem igualment
-    const slopeHistory = [slope];
-    if (candles.length >= len + 1) {
-        slopeHistory.push(slopeHistory[0]); // aproximació
-        slopeHistory.push(slopeHistory[0]);
-    }
-    slope = (slopeHistory[0] + slopeHistory[1] + slopeHistory[2]) / 3;
+    // suavitzat simple a 3 punts (aprox)
+    const slope = raw_slope; // si vols, pots guardar històric i suavitzar
 
-    // -------------------------------------------------------------
-    // 4) INTERCEPT centrat (TradingView)
-    // -------------------------------------------------------------
+    // --- FIAT INTERCEPT (centrat) ---
     const intercept =
         mid -
         slope * Math.floor(len / 2) +
         ((1 - (len % 2)) / 2) * slope;
 
-    // -------------------------------------------------------------
-    // 5) DEV quadràtica + recta invertida (TradingView)
-    // -------------------------------------------------------------
+    // --- FIAT DEV (quadràtica + recta invertida) ---
     let d = 0;
     for (let i = 0; i < len; i++) {
+        const idx = endIndex - i;
         const expected = slope * (len - i) + intercept;
-        d += Math.pow(closes[i] - expected, 2);
+        d += Math.pow(closes[idx] - expected, 2);
     }
     const dev = Math.sqrt(d / len);
 
@@ -103,10 +124,10 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
-    const devlen = dev * 1.6;
+    const devlen = dev * devlenFactor;
 
+    // --- FIAT CHANNEL (endy = midline) ---
     const endy = intercept + slope * (len - 1);
-
     const upper = endy + devlen;
     const lower = endy - devlen;
 
@@ -116,7 +137,7 @@ export function calculateChannelFIAT(candles) {
             intercept,
             dev,
             devlen,
-            mid,
+            mid: endy,
             upper,
             lower,
             operable: false,
@@ -124,9 +145,7 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
-    // -------------------------------------------------------------
-    // 6) OPERABLE
-    // -------------------------------------------------------------
+    // --- OPERABLE (anti-vertical) ---
     let operable = true;
     let reason = "";
 
@@ -140,7 +159,7 @@ export function calculateChannelFIAT(candles) {
         intercept,
         dev,
         devlen,
-        mid: endy,     // TradingView: midline = endy
+        mid: endy,   // midline = endy (com TradingView)
         upper,
         lower,
         operable,
