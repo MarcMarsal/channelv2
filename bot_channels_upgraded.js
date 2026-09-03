@@ -55,64 +55,88 @@ export async function processSymbolFIAT(symbol, candles) {
   `, [symbol, tsOpen]);
 
   if (existingOpen.rows.length === 0) {
-    await client.query(`
-  INSERT INTO channels_fiat (
-    symbol,
-    slope,
-    intercept,
-    dev,
-    devlen,
-    mid,
-    timestamp,
-    created_at,
-    upper,
-    lower,
-    operable,
-    reason,
-    open,
-    close,
-    data_es,
-    hora_es,
-    accio,
-    confirm
-  ) VALUES (
-    $1,        -- symbol
-    $2,        -- slope
-    $3,        -- intercept
-    $4,        -- dev
-    $5,        -- devlen
-    $6,        -- mid
-    $7,        -- timestamp
-    EXTRACT(EPOCH FROM NOW()) * 1000,   -- created_at
-    $8,        -- upper
-    $9,        -- lower
-    $10,       -- operable
-    $11,       -- reason
-    $12,       -- open
-    $13,       -- close
-    $14,       -- data_es
-    $15,       -- hora_es
-    '',        -- accio
-    false      -- confirm
-  )
-`, [
-  symbol,
-  canalOpen.slope,
-  canalOpen.intercept,
-  canalOpen.dev,
-  canalOpen.devlen,
-  canalOpen.mid,
-  tsOpen,
-  canalOpen.upper,
-  canalOpen.lower,
-  canalOpen.operable,
-  canalOpen.reason,
-  openCandle.open,
-  openCandle.close,
-  formatSpainDate(tsOpen),
-  formatSpainTime(tsOpen)
-]);
 
+    // 🔥 DEBUG FIAT — imprimir la query exacta amb valors substituïts
+    const debugQuery = `
+INSERT INTO channels_fiat (
+  symbol, slope, intercept, dev, devlen, mid,
+  timestamp, created_at,
+  upper, lower,
+  operable, reason,
+  open, close,
+  data_es, hora_es,
+  accio, confirm
+) VALUES (
+  '${symbol}',
+  ${canalOpen.slope},
+  ${canalOpen.intercept},
+  ${canalOpen.dev},
+  ${canalOpen.devlen},
+  ${canalOpen.mid},
+  ${tsOpen},
+  ${Date.now()},
+  ${canalOpen.upper},
+  ${canalOpen.lower},
+  ${canalOpen.operable},
+  '${canalOpen.reason}',
+  ${openCandle.open},
+  ${openCandle.close},
+  '${formatSpainDate(tsOpen)}',
+  '${formatSpainTime(tsOpen)}',
+  '',
+  false
+);
+`;
+    console.log("🔥 FIAT DEBUG QUERY (channels_fiat INSERT):\n", debugQuery);
+
+    // 🔥 EXECUCIÓ REAL
+    await client.query(`
+      INSERT INTO channels_fiat (
+        symbol,
+        slope,
+        intercept,
+        dev,
+        devlen,
+        mid,
+        timestamp,
+        created_at,
+        upper,
+        lower,
+        operable,
+        reason,
+        open,
+        close,
+        data_es,
+        hora_es,
+        accio,
+        confirm
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6,
+        $7,
+        EXTRACT(EPOCH FROM NOW()) * 1000,
+        $8, $9,
+        $10, $11,
+        $12, $13,
+        $14, $15,
+        '', false
+      )
+    `, [
+      symbol,
+      canalOpen.slope,
+      canalOpen.intercept,
+      canalOpen.dev,
+      canalOpen.devlen,
+      canalOpen.mid,
+      tsOpen,
+      canalOpen.upper,
+      canalOpen.lower,
+      canalOpen.operable,
+      canalOpen.reason,
+      openCandle.open,
+      openCandle.close,
+      formatSpainDate(tsOpen),
+      formatSpainTime(tsOpen)
+    ]);
   }
 
   // -------------------------------------------------------------
@@ -120,7 +144,6 @@ export async function processSymbolFIAT(symbol, candles) {
   // -------------------------------------------------------------
   if (existingClosed.rows.length > 0 && closedCandle.confirm === true) {
 
-    // 🔥 LLEGIR EL CANAL REAL DE LA DB (NO el recalculat)
     const canalDB = await client.query(`
       SELECT *
       FROM channels_fiat
@@ -135,7 +158,6 @@ export async function processSymbolFIAT(symbol, candles) {
       return;
     }
 
-    // 🔥 Calcular acció FIAT amb el canal REAL
     const accio = calcularAccioFIAT(
       closedCandle.open,
       closedCandle.close,
@@ -143,7 +165,6 @@ export async function processSymbolFIAT(symbol, candles) {
       canalReal.lower
     );
 
-    // 🔥 Actualitzar canal tancat
     await client.query(`
       UPDATE channels_fiat
       SET close   = $1,
@@ -156,7 +177,6 @@ export async function processSymbolFIAT(symbol, candles) {
       existingClosed.rows[0].id
     ]);
 
-    // 🔥 Generar senyal FIAT només si hi ha acció
     if (accio !== "") {
       const exists = await alreadySent2(symbol, "15m", tsClosed);
       if (!exists) {
@@ -169,7 +189,7 @@ export async function processSymbolFIAT(symbol, candles) {
       }
     }
   }
-} // <-- 🔥 TANCAMENT CORRECTE DE LA FUNCIÓ
+}
 
 async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
