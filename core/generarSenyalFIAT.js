@@ -21,6 +21,22 @@ export async function generarSenyalFIAT(
     lower,
     canal      // objecte amb slope, intercept, endy, dev, devlen, mid, len, operable, reason, stage, rr
 ) {
+
+    if (!canal) {
+        console.log(`FIAT: canal undefined → no senyal per ${symbol}`);
+        return;
+    }
+
+    if (canal.slope === undefined || canal.slope === null) {
+        console.log(`FIAT: canal sense slope → no senyal per ${symbol}`);
+        return;
+    }
+
+    if (!accio || accio === "") {
+        console.log(`FIAT: sense acció → no senyal per ${symbol}`);
+        return;
+    }
+
     const date_es = formatSpainDate(timestamp);
     const hora_es = formatSpainTime(timestamp);
     const timestamp_es = timestamp;
