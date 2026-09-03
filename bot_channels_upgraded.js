@@ -30,8 +30,8 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 export async function processSymbolFIAT(symbol, candles) {
   if (!candles || candles.length < 2) return;
 
-  const closedCandle = candles[candles.length - 2];
-  const openCandle   = candles[candles.length - 1];
+  const closedCandle = candles[candles.length - 2]; // VELA TANCADA
+  const openCandle   = candles[candles.length - 1]; // VELA OBERTA
 
   const tsClosed = closedCandle.timestamp;
   const tsOpen   = openCandle.timestamp;
@@ -42,8 +42,12 @@ export async function processSymbolFIAT(symbol, candles) {
     WHERE symbol = $1 AND timestamp = $2
   `, [symbol, tsClosed]);
 
+  // Canal recalculat per la vela oberta (només per INSERT)
   const canalOpen = calculateChannelFIAT(candles);
 
+  // -------------------------------------------------------------
+  // 1) CANAL NOU SOBRE LA VELA OBERTA (si no existeix)
+  // -------------------------------------------------------------
   const existingOpen = await client.query(`
     SELECT *
     FROM channels_fiat
@@ -52,7 +56,7 @@ export async function processSymbolFIAT(symbol, candles) {
 
   if (existingOpen.rows.length === 0) {
 
-    // 🔥 FIAT DEBUG — MOSTRAR QUERY ABANS D’EXECUTAR
+    // 🔥 FIAT DEBUG — MOSTRAR QUERY SEMPRE, ABANS DEL TRY/CATCH
     const debugQuery = `
 INSERT INTO channels_fiat (
   symbol, slope, intercept, dev, devlen, mid,
@@ -136,7 +140,7 @@ INSERT INTO channels_fiat (
   }
 
   // -------------------------------------------------------------
-  // 2) CANAL TANCAT SOBRE LA VELA TANCADA
+  // 2) CANAL TANCAT SOBRE LA VELA TANCADA (FIAT REAL)
   // -------------------------------------------------------------
   if (existingClosed.rows.length > 0 && closedCandle.confirm === true) {
 
