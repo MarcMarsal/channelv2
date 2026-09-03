@@ -52,19 +52,34 @@ export async function generarSenyalFIAT(
     let tp = null;
     let sl = null;
 
-    if (accio === "reingres_inferior") {
+    //if (accio === "reingres_inferior") {
         // LONG
-        entry = open;
-        tp    = upper;
-        sl    = lower;
+    //    entry = open;
+    //    tp    = upper;
+    //    sl    = lower;
+    //}
+
+    //if (accio === "reingres_superior") {
+        // SHORT
+    //    entry = open;
+    //    tp    = lower;
+    //    sl    = upper;
+    //}
+
+    if (accio === "reingres_inferior") {
+      // LONG FIAT institucional
+      entry = close;
+      tp    = upper;
+      sl    = lower;
     }
 
     if (accio === "reingres_superior") {
-        // SHORT
-        entry = open;
-        tp    = lower;
-        sl    = upper;
+      // SHORT FIAT institucional
+      entry = close;
+      tp    = lower;
+      sl    = upper;
     }
+
 
     // Breakouts → alerta (closed = true)
     // Reingressos → trade obert (closed = false)
