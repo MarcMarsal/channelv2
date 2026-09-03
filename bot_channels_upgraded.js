@@ -76,24 +76,24 @@ export async function processSymbolFIAT(symbol, candles) {
     accio,
     confirm
   ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    EXTRACT(EPOCH FROM NOW()) * 1000,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13,
-    $14,
-    $15,
-    '',
-    false
+    $1,        -- symbol
+    $2,        -- slope
+    $3,        -- intercept
+    $4,        -- dev
+    $5,        -- devlen
+    $6,        -- mid
+    $7,        -- timestamp
+    EXTRACT(EPOCH FROM NOW()) * 1000,   -- created_at
+    $8,        -- upper
+    $9,        -- lower
+    $10,       -- operable
+    $11,       -- reason
+    $12,       -- open
+    $13,       -- close
+    $14,       -- data_es
+    $15,       -- hora_es
+    '',        -- accio
+    false      -- confirm
   )
 `, [
   symbol,
