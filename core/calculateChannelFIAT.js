@@ -2,7 +2,7 @@ export function calculateChannelFIAT(candles) {
     const len = 60;
     const devlenFactor = 1.6;
 
-    if (candles.length < len + 5) {
+    if (candles.length < len) {
         return {
             slope: 0,
             intercept: 0,
@@ -17,33 +17,29 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
+    // Últimes len veles
     const closes = candles.map(c => Number(c.close));
-
-    // WINDOW EXACTA com PineScript
     const window = closes.slice(-len);
 
-    // 1) slope ultrasuau final
+    // 1) SLOPE SUAU (ponderació suau)
     let num = 0;
     let wsum = 0;
 
     for (let i = 0; i < len - 1; i++) {
-        const w = (i + 1) / (len * 2);
+        const w = (i + 1) / (len * 2);   // ponderació suau
         num += w * (window[i] - window[i + 1]);
         wsum += w;
     }
 
-    const slopeRaw = num / wsum;
+    const slope = num / wsum;
 
-    // smoothing real (no 5× el mateix valor)
-    const slope = slopeRaw; // sense historial no es pot fer smoothing temporal
-
-    // 2) mid (SMA)
+    // 2) MID (SMA)
     const mid = window.reduce((a, b) => a + b, 0) / len;
 
-    // 3) intercept
+    // 3) INTERCEPT centrat
     const intercept = mid - slope * Math.floor(len / 2);
 
-    // 4) dev ultrasuau final
+    // 4) DEV SUAU (ponderació suau)
     let d = 0;
     let wsumDev = 0;
 
@@ -54,15 +50,13 @@ export function calculateChannelFIAT(candles) {
         wsumDev += w;
     }
 
-    const devRaw = Math.sqrt(d / wsumDev);
-    const dev = devRaw; // igual que slope: sense historial no hi ha smoothing
+    const dev = Math.sqrt(d / wsumDev);
 
-    // 5) endy
+    // 5) ENDY (punt final del canal)
     const endy = intercept + slope * (len - 1);
 
-    // 6) devlen
+    // 6) CANAL
     const devlen = dev * devlenFactor;
-
     const upper = endy + devlen;
     const lower = endy - devlen;
 
