@@ -56,31 +56,63 @@ export async function processSymbolFIAT(symbol, candles) {
 
   if (existingOpen.rows.length === 0) {
     await client.query(`
-      INSERT INTO channels_fiat (
-        symbol, timestamp, data_es, hora_es,
-        open, close,
-        slope, intercept, dev, devlen, mid, upper, lower,
-        operable, reason,
-        accio,
-        confirm,
-        created_at
-      ) VALUES (
-        $1, $2, $3, $4,
-        $5, $6,
-        $7, $8, $9, $10, $11, $12, $13,
-        $14, $15,
-        '',
-        false,
-        EXTRACT(EPOCH FROM NOW()) * 1000
-      )
-    `, [
-      symbol, tsOpen,
-      formatSpainDate(tsOpen), formatSpainTime(tsOpen),
-      openCandle.open, openCandle.close,
-      canalOpen.slope, canalOpen.intercept, canalOpen.dev, canalOpen.devlen,
-      canalOpen.mid, canalOpen.upper, canalOpen.lower,
-      canalOpen.operable, canalOpen.reason
-    ]);
+  INSERT INTO channels_fiat (
+    symbol,
+    slope,
+    intercept,
+    dev,
+    devlen,
+    mid,
+    timestamp,
+    created_at,
+    upper,
+    lower,
+    operable,
+    reason,
+    open,
+    close,
+    data_es,
+    hora_es,
+    accio,
+    confirm
+  ) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    EXTRACT(EPOCH FROM NOW()) * 1000,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15,
+    '',
+    false
+  )
+`, [
+  symbol,
+  canalOpen.slope,
+  canalOpen.intercept,
+  canalOpen.dev,
+  canalOpen.devlen,
+  canalOpen.mid,
+  tsOpen,
+  canalOpen.upper,
+  canalOpen.lower,
+  canalOpen.operable,
+  canalOpen.reason,
+  openCandle.open,
+  openCandle.close,
+  formatSpainDate(tsOpen),
+  formatSpainTime(tsOpen)
+]);
+
   }
 
   // -------------------------------------------------------------
