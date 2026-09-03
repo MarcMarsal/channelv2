@@ -33,7 +33,7 @@ async function getActiveSignals() {
 }
 
 // -------------------------------------------------------------
-// LLEGIR ÚLTIMS CANALS FIAT 15m (últims 3 per symbol)
+// LLEGIR ÚLTIMS CANALS FIAT 15m (últims 6 per symbol)
 // -------------------------------------------------------------
 async function getChannels() {
   const q = await client.query(`
@@ -48,6 +48,8 @@ async function getChannels() {
         lower,
         accio,
         confirm,
+        operable,
+        reason,
         timestamp,
         data_es,
         hora_es,
@@ -76,9 +78,6 @@ function renderChannelsTable(channels) {
     rows += `
       <tr data-symbol="${ch.symbol}"
           data-accio="${ch.accio}"
-          data-confirm="${ch.confirm}"
-          data-operable="${ch.operable}"
-          data-vertical="${ch.reason === 'vertical'}"
           style="color:${color}">
         
         <td>${ch.symbol}</td>
@@ -107,9 +106,7 @@ function renderChannelsTable(channels) {
       <select id="filterMode" style="font-size:16px; padding:4px;">
         <option value="all">Tots els canals</option>
         <option value="accio">Només canals amb acció</option>
-        <option value="confirm">Només confirmats</option>
-        <option value="operable">Només operables</option>
-        <option value="novvertical">Sense verticals</option>
+        <option value="reingres">Només reingressos</option>
       </select>
     </label>
 
@@ -147,18 +144,17 @@ function renderChannelsTable(channels) {
 
         rows.forEach(row => {
           const accio = row.dataset.accio;
-          const confirm = row.dataset.confirm === "true";
-          const operable = row.dataset.operable === "true";
-          const vertical = row.dataset.vertical === "true";
           const symbol = row.dataset.symbol;
 
           let hide = false;
 
-          if (mode === "accio" && accio === "") hide = true;
-          if (mode === "confirm" && !confirm) hide = true;
-          if (mode === "operable" && !operable) hide = true;
-          if (mode === "novvertical" && vertical) hide = true;
+          // 🔥 NOMÉS REINGRESSOS
+          if (mode === "reingres" && !accio.includes("reingres")) hide = true;
 
+          // 🔥 NOMÉS CANALS AMB ACCIÓ
+          if (mode === "accio" && accio === "") hide = true;
+
+          // 🔥 FILTRE PER SYMBOL
           if (sym !== "all" && symbol !== sym) hide = true;
 
           row.style.display = hide ? "none" : "";
@@ -189,7 +185,6 @@ function renderChannelsTable(channels) {
     </table>
   `;
 }
-
 
 // -------------------------------------------------------------
 // TAULA D'ALERTES FIAT 15m
