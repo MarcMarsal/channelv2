@@ -73,7 +73,7 @@ export function calculateChannelFIAT(candles) {
         intercept,
         dev,
         devlen,
-        mid,          // ← AIXÒ ÉS EL QUE FALTAVA
+        mid: endy,          // ← AIXÒ ÉS EL QUE FALTAVA
         midline: endy,
         upper,
         lower,
