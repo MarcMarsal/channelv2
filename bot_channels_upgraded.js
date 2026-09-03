@@ -57,37 +57,37 @@ export async function processSymbolFIAT(symbol, candles) {
   if (existingOpen.rows.length === 0) {
 
     // 🔥 FIAT DEBUG — MOSTRAR QUERY SEMPRE, ABANS DEL TRY/CATCH
-    const debugQuery = `
-INSERT INTO channels_fiat (
-  symbol, slope, intercept, dev, devlen, mid,
-  timestamp, created_at,
-  upper, lower,
-  operable, reason,
-  open, close,
-  data_es, hora_es,
-  accio, confirm
-) VALUES (
-  '${symbol}',
-  ${canalOpen.slope},
-  ${canalOpen.intercept},
-  ${canalOpen.dev},
-  ${canalOpen.devlen},
-  ${canalOpen.mid},
-  ${tsOpen},
-  ${Date.now()},
-  ${canalOpen.upper},
-  ${canalOpen.lower},
-  ${canalOpen.operable},
-  '${canalOpen.reason}',
-  ${openCandle.open},
-  ${openCandle.close},
-  '${formatSpainDate(tsOpen)}',
-  '${formatSpainTime(tsOpen)}',
-  '',
-  false
-);
-`;
-    console.log("🔥 FIAT DEBUG QUERY (channels_fiat INSERT):\n", debugQuery);
+    //const debugQuery = `
+//INSERT INTO channels_fiat (
+  //symbol, slope, intercept, dev, devlen, mid,
+  //timestamp, created_at,
+  //upper, lower,
+  //operable, reason,
+  //open, close,
+  //data_es, hora_es,
+  //accio, confirm
+//) VALUES (
+  //'${symbol}',
+  //${canalOpen.slope},
+  //${canalOpen.intercept},
+  //${canalOpen.dev},
+  //${canalOpen.devlen},
+  //${canalOpen.mid},
+  //${tsOpen},
+  //${Date.now()},
+  //${canalOpen.upper},
+  //${canalOpen.lower},
+  //${canalOpen.operable},
+  //'${canalOpen.reason}',
+  //${openCandle.open},
+  //${openCandle.close},
+  //'${formatSpainDate(tsOpen)}',
+  //'${formatSpainTime(tsOpen)}',
+  //'',
+  //false
+//);
+//`;
+    //console.log("🔥 FIAT DEBUG QUERY (channels_fiat INSERT):\n", debugQuery);
 
     // 🔥 EXECUCIÓ REAL
     await client.query(`
