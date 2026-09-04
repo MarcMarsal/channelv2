@@ -4,7 +4,7 @@ import http from "http";
 import { initDB, client } from "./db/client.js";
 import { formatSpainTime } from "./core/utils.js";
 import { DECIMALS, fmt } from "./core/decimals.js";
-import { getActiveSignals, getChannels} from "./core/getChannelInfo";
+import { getActiveSignals, getChannels} from "./core/getChannelInfo.js";
 
 // -------------------------------------------------------------
 // TAULA DE CANALS FIAT 15m
