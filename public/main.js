@@ -1,7 +1,7 @@
+const chartEl = document.getElementById("chart");
+const selector = document.getElementById("symbolSelector");
 
-const chartElement = document.getElementById("chart");
-
-const chart = LightweightCharts.createChart(chartElement, {
+const chart = LightweightCharts.createChart(chartEl, {
     layout: { background: { color: "#111" }, textColor: "#DDD" },
     rightPriceScale: { borderColor: "#555" },
     timeScale: { borderColor: "#555" }
@@ -9,11 +9,11 @@ const chart = LightweightCharts.createChart(chartElement, {
 
 const candleSeries = chart.addCandlestickSeries();
 const upperSeries  = chart.addLineSeries({ color: "red" });
-const midSeries    = chart.addLineSeries({ color: "blue" });
+const midSeries    = chart.addLineSeries({ color: "yellow" });
 const lowerSeries  = chart.addLineSeries({ color: "green" });
 
-async function loadData() {
-    const res = await fetch("/chart-data");
+async function load(symbol) {
+    const res = await fetch(`/chart-data?symbol=${symbol}`);
     const data = await res.json();
 
     candleSeries.setData(data.candles);
@@ -22,4 +22,7 @@ async function loadData() {
     lowerSeries.setData(data.lower);
 }
 
-loadData();
+selector.onchange = () => load(selector.value);
+
+// Carrega inicial
+load("BTC-USDT");
