@@ -1,14 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="ca">
 <head>
-  <meta charset="UTF-8">
-  <title>Viewer Test</title>
+  <meta charset="UTF-8" />
+  <title>FIAT Viewer</title>
   <style>
     body { margin: 0; background: #111; }
     #chart { width: 100vw; height: 100vh; }
+    #symbolSelector {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      padding: 6px;
+      background: #222;
+      color: #0f0;
+      border: 1px solid #0f0;
+    }
   </style>
 </head>
+
 <body>
+  <select id="symbolSelector">
+    <option>BTC-USDT</option>
+    <option>SOL-USDT</option>
+    <option>ETH-USDT</option>
+    <option>AVAX-USDT</option>
+  </select>
 
   <div id="chart"></div>
 
