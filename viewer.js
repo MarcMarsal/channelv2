@@ -1,71 +1,28 @@
 import express from "express";
-import { initDB, client } from "./db/client.js";
-import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 
 const app = express();
 
-// Servir la carpeta public/
+// Servir carpeta public
 app.use(express.static("public"));
 
-// Endpoint /chart-data
-app.get("/chart-data", async (req, res) => {
-    try {
-        const symbol = req.query.symbol || "BTC-USDT";
-        const timeframe = "15m";
+// Endpoint de dades
+app.get("/chart-data", (req, res) => {
+    const candles = [
+        { time: 1787381100, open: 77405.4, high: 77546.6, low: 77398.2, close: 77492.8 },
+        { time: 1787382000, open: 77492.8, high: 77674.8, low: 77284.2, close: 77378.5 },
+        { time: 1787382900, open: 77378.5, high: 77516.4, low: 77231,   close: 77499.2 }
+    ];
 
-        const candlesRes = await client.query(`
-            SELECT *
-            FROM candles
-            WHERE symbol = $1 AND timeframe = $2
-            ORDER BY timestamp ASC
-            LIMIT 200
-        `, [symbol, timeframe]);
+    const upper = candles.map(c => ({ time: c.time, value: 78000 }));
+    const mid   = candles.map(c => ({ time: c.time, value: 77000 }));
+    const lower = candles.map(c => ({ time: c.time, value: 76000 }));
 
-        const candles = candlesRes.rows.map(c => ({
-            // assume DB guarda ms → passem a segons per Lightweight Charts
-            time: Math.floor(Number(c.timestamp) / 1000),
-            open: Number(c.open),
-            high: Number(c.high),
-            low: Number(c.low),
-            close: Number(c.close)
-        }));
-
-        if (candles.length === 0) {
-            return res.json({ candles: [], upper: [], mid: [], lower: [] });
-        }
-
-        const channel = calculateChannelFIAT(candles);
-
-        const upper = candles.map(c => ({
-            time: c.time,
-            value: Number(channel.upper)
-        }));
-
-        const mid = candles.map(c => ({
-            time: c.time,
-            value: Number(channel.mid)
-        }));
-
-        const lower = candles.map(c => ({
-            time: c.time,
-            value: Number(channel.lower)
-        }));
-
-        res.json({ candles, upper, mid, lower });
-
-    } catch (err) {
-        console.error("❌ Error /chart-data:", err);
-        res.json({ candles: [], upper: [], mid: [], lower: [] });
-    }
+    res.json({ candles, upper, mid, lower });
 });
 
-async function startViewer() {
-    await initDB();
-    const PORT = 8080;
+// Railway → escoltar en 8080
+const PORT = 8080;
 
-    app.listen(PORT, () =>
-        console.log(`📈 Viewer FIAT en marxa → http://localhost:${PORT}`)
-    );
-}
-
-startViewer();
+app.listen(PORT, () => {
+    console.log("Viewer FIAT OK → http://localhost:" + PORT);
+});
