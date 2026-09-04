@@ -33,7 +33,8 @@ app.get("/chart-data", async (req, res) => {
         `, [symbol, timeframe]);
 
         const candles = candlesRes.rows.map(c => ({
-            time: Math.floor(c.timestamp / 1000), // Lightweight Charts → segons
+            //time: Math.floor(c.timestamp / 1000), // Lightweight Charts → segons
+            time: c.timestamp * 1000
             open: c.open,
             high: c.high,
             low: c.low,
