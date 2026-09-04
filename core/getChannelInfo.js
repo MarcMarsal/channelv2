@@ -1,6 +1,6 @@
 // fitxer getChannelInfo
 
-import { client } from "./db/client.js";
+import { client } from "../db/client.js";
 
 // -------------------------------------------------------------
 // LLEGIR ÚLTIMES ALERTES FIAT 15m
