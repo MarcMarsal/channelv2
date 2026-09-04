@@ -24,11 +24,11 @@ app.get("/chart-data", async (req, res) => {
 
         // 2) Convertir candles a format Lightweight Charts
         const candles = candlesRes.rows.map(c => ({
-            time: c.timestamp,   // 🔥 CORRECCIÓ FIAT → ms, no s
-            open: c.open,
-            high: c.high,
-            low: c.low,
-            close: c.close
+            time: Number(c.timestamp),   // 🔥 IMPORTANT: ha de ser número
+            open: Number(c.open),
+            high: Number(c.high),
+            low: Number(c.low),
+            close: Number(c.close)
         }));
 
         if (candles.length === 0) {
@@ -38,20 +38,20 @@ app.get("/chart-data", async (req, res) => {
         // 3) Calcular canal FIAT amb el mateix codi del bot
         const channel = calculateChannelFIAT(candles);
 
-        // 4) Convertir upper/mid/lower
+        // 4) Convertir upper/mid/lower → també en Number()
         const upper = candles.map(c => ({
             time: c.time,
-            value: channel.upper
+            value: Number(channel.upper)
         }));
 
         const mid = candles.map(c => ({
             time: c.time,
-            value: channel.mid
+            value: Number(channel.mid)
         }));
 
         const lower = candles.map(c => ({
             time: c.time,
-            value: channel.lower
+            value: Number(channel.lower)
         }));
 
         // 5) Enviar dades al viewer
