@@ -148,13 +148,8 @@ function renderChannelsTable(channels) {
 
           let hide = false;
 
-          // 🔥 NOMÉS REINGRESSOS
           if (mode === "reingres" && !accio.includes("reingres")) hide = true;
-
-          // 🔥 NOMÉS CANALS AMB ACCIÓ
           if (mode === "accio" && accio === "") hide = true;
-
-          // 🔥 FILTRE PER SYMBOL
           if (sym !== "all" && symbol !== sym) hide = true;
 
           row.style.display = hide ? "none" : "";
@@ -187,7 +182,7 @@ function renderChannelsTable(channels) {
 }
 
 // -------------------------------------------------------------
-// TAULA D'ALERTES FIAT 15m
+// TAULA D'ALERTES FIAT 15m (Entrada + TP/SL)
 // -------------------------------------------------------------
 function renderActiveSignalsTable(signals) {
   let rows = "";
@@ -198,9 +193,13 @@ function renderActiveSignalsTable(signals) {
         <td>${s.id}</td>
         <td>${s.symbol}</td>
         <td>${s.type}</td>
-        <td>${fmt(s.entry)}</td>
+
+        <!-- Entrada + TP + SL -->
+        <td>${fmt(s.entry)} (${fmt(s.tp)} / ${fmt(s.sl)})</td>
+
         <td>${fmt(s.tp)}</td>
         <td>${fmt(s.sl)}</td>
+
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
         <td>${formatSpainTime(s.created_at)}</td>
@@ -216,9 +215,9 @@ function renderActiveSignalsTable(signals) {
           <th>ID</th>
           <th>Symbol</th>
           <th>Acció</th>
-          <th>Entrada</th>
-          <th>Upper</th>
-          <th>Lower</th>
+          <th>Entrada (TP/SL)</th>
+          <th>TP</th>
+          <th>SL</th>
           <th>Data</th>
           <th>Hora</th>
           <th>Creat</th>
@@ -238,6 +237,45 @@ async function startPanel() {
   await initDB();
 
   http.createServer(async (req, res) => {
+
+    // ---------------------------------------------------------
+    // API: CARREGAR OCR → ACTUALITZAR ÚLTIM CANAL
+    // ---------------------------------------------------------
+    if (req.url === "/api/load-ocr" && req.method === "POST") {
+      let body = "";
+      req.on("data", chunk => body += chunk);
+      req.on("end", async () => {
+        const data = JSON.parse(body);
+
+        const q = await client.query(`
+          SELECT id FROM channels_fiat
+          WHERE symbol = $1
+          ORDER BY timestamp DESC
+          LIMIT 1
+        `, [data.symbol]);
+
+        if (q.rows.length === 0) {
+          res.writeHead(404);
+          return res.end("No canal found");
+        }
+
+        const id = q.rows[0].id;
+
+        await client.query(`
+          UPDATE channels_fiat
+          SET upper = $1, mid = $2, lower = $3
+          WHERE id = $4
+        `, [data.upper, data.mid, data.lower, id]);
+
+        res.writeHead(200);
+        res.end("OK");
+      });
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // PANELL HTML
+    // ---------------------------------------------------------
     if (req.url === "/") {
       const signals = await getActiveSignals();
       const channels = await getChannels();
@@ -280,6 +318,50 @@ async function startPanel() {
 
         ${channelsHTML}
         ${signalsHTML}
+
+        <hr>
+        <h2>Carregar canal via OCR</h2>
+
+        <input id="ocrInput"
+               placeholder="SEIUSDT | 0.0492166011 | 0.0486748989 | 0.0481331967"
+               style="width:500px; padding:6px; font-size:16px;">
+
+        <button id="ocrLoadBtn"
+                style="padding:6px 12px; font-size:16px; margin-left:10px;">
+          Carrega
+        </button>
+
+        <script>
+          function parseOCR(raw) {
+            const parts = raw.split("|").map(p => p.trim());
+            let symbol = parts[0].replace("USDT", "-USDT");
+
+            return {
+              symbol,
+              upper: parseFloat(parts[1]),
+              mid: parseFloat(parts[2]),
+              lower: parseFloat(parts[3])
+            };
+          }
+
+          async function loadOCRToChannel() {
+            const raw = document.getElementById("ocrInput").value.trim();
+            if (!raw) return alert("Introdueix el text OCR");
+
+            const data = parseOCR(raw);
+
+            await fetch("/api/load-ocr", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            });
+
+            alert("Canal actualitzat!");
+            location.reload();
+          }
+
+          document.getElementById("ocrLoadBtn").onclick = loadOCRToChannel;
+        </script>
 
       </body>
       </html>
