@@ -50,7 +50,7 @@ async function startViewer() {
     await initDB();
 
     // Railway exposa aquest port
-    const PORT = process.env.PORT || 8080;
+    const PORT = 8080;
 
     app.listen(PORT, () => {
         console.log(`📈 Viewer FIAT en marxa → port Railway ${PORT}`);
