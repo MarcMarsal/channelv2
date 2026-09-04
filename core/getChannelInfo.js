@@ -1,0 +1,2 @@
+// fitxer getChannelInfo
+test
