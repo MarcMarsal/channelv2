@@ -3,10 +3,7 @@
 import http from "http";
 import { initDB, client } from "./db/client.js";
 import { formatSpainTime } from "./core/utils.js";
-
-function fmt(n) {
-  return n !== null && n !== undefined ? Number(n).toFixed(4) : "-";
-}
+import { DECIMALS, fmt } from "./core/decimals.js";
 
 // -------------------------------------------------------------
 // LLEGIR ÚLTIMES ALERTES FIAT 15m
@@ -82,12 +79,12 @@ function renderChannelsTable(channels) {
         
         <td>${ch.symbol}</td>
 
-        <td>${fmt(ch.upper)}</td>
-        <td>${fmt(ch.mid)}</td>
-        <td>${fmt(ch.lower)}</td>
+        <td>${fmt(ch.upper, ch.symbol)}</td>
+        <td>${fmt(ch.mid, ch.symbol)}</td>
+        <td>${fmt(ch.lower, ch.symbol)}</td>
 
-        <td>${fmt(ch.open)}</td>
-        <td>${fmt(ch.close)}</td>
+        <td>${fmt(ch.open, ch.symbol)}</td>
+        <td>${fmt(ch.close, ch.symbol)}</td>
 
         <td>${ch.accio || "-"}</td>
         <td>${ch.confirm ? "sí" : "no"}</td>
@@ -101,23 +98,41 @@ function renderChannelsTable(channels) {
   return `
     <h2>Canals FIAT 15m (últims 6 per cripto)</h2>
 
-    <label style="color:#0f0; font-size:18px;">
-      Filtre:
-      <select id="filterMode" style="font-size:16px; padding:4px;">
-        <option value="all">Tots els canals</option>
-        <option value="accio">Només canals amb acció</option>
-        <option value="reingres">Només reingressos</option>
-      </select>
-    </label>
+    <!-- FILTRE + SYMBOL + OCR A DALT -->
+    <div style="margin-bottom:20px;">
 
-    <label style="color:#0f0; font-size:18px; margin-left:20px;">
-      Symbol:
-      <select id="symbolFilter" style="font-size:16px; padding:4px;">
-        <option value="all">Tots</option>
-        ${[...new Set(channels.map(c => c.symbol))]
-          .map(sym => `<option value="${sym}">${sym}</option>`).join("")}
-      </select>
-    </label>
+      <label style="color:#0f0; font-size:18px;">
+        Filtre:
+        <select id="filterMode" style="font-size:16px; padding:4px;">
+          <option value="all">Tots els canals</option>
+          <option value="accio">Només canals amb acció</option>
+          <option value="reingres">Només reingressos</option>
+        </select>
+      </label>
+
+      <label style="color:#0f0; font-size:18px; margin-left:20px;">
+        Symbol:
+        <select id="symbolFilter" style="font-size:16px; padding:4px;">
+          <option value="all">Tots</option>
+          ${[...new Set(channels.map(c => c.symbol))]
+            .map(sym => `<option value="${sym}">${sym}</option>`).join("")}
+        </select>
+      </label>
+
+      <!-- OCR INPUT A DALT -->
+      <label style="color:#0f0; font-size:18px; margin-left:20px;">
+        Carregar OCR:
+        <input id="ocrInput"
+               placeholder="SEIUSDT | upper | mid | lower | open | close"
+               style="width:420px; padding:6px; font-size:16px;">
+      </label>
+
+      <button id="ocrLoadBtn"
+              style="padding:6px 12px; font-size:16px; margin-left:10px;">
+        Carrega
+      </button>
+
+    </div>
 
     <script>
       const filterMode = localStorage.getItem("filterMode") || "all";
@@ -155,9 +170,39 @@ function renderChannelsTable(channels) {
           row.style.display = hide ? "none" : "";
         });
       });
-    </script>
 
-    <br><br>
+      function parseOCR(raw) {
+        const parts = raw.split("|").map(p => p.trim());
+        let symbol = parts[0].replace("USDT", "-USDT");
+
+        return {
+          symbol,
+          upper: parseFloat(parts[1]),
+          mid: parseFloat(parts[2]),
+          lower: parseFloat(parts[3]),
+          open: parts[4] ? parseFloat(parts[4]) : null,
+          close: parts[5] ? parseFloat(parts[5]) : null
+        };
+      }
+
+      async function loadOCRToChannel() {
+        const raw = document.getElementById("ocrInput").value.trim();
+        if (!raw) return alert("Introdueix el text OCR");
+
+        const data = parseOCR(raw);
+
+        await fetch("/api/load-ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        alert("Canal actualitzat!");
+        location.reload();
+      }
+
+      document.getElementById("ocrLoadBtn").onclick = loadOCRToChannel;
+    </script>
 
     <table>
       <thead>
@@ -194,11 +239,10 @@ function renderActiveSignalsTable(signals) {
         <td>${s.symbol}</td>
         <td>${s.type}</td>
 
-        <!-- Entrada + TP + SL -->
-        <td>${fmt(s.entry)} (${fmt(s.tp)} / ${fmt(s.sl)})</td>
+        <td>${fmt(s.entry, s.symbol)} (${fmt(s.tp, s.symbol)} / ${fmt(s.sl, s.symbol)})</td>
 
-        <td>${fmt(s.tp)}</td>
-        <td>${fmt(s.sl)}</td>
+        <td>${fmt(s.tp, s.symbol)}</td>
+        <td>${fmt(s.sl, s.symbol)}</td>
 
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
@@ -263,9 +307,20 @@ async function startPanel() {
 
         await client.query(`
           UPDATE channels_fiat
-          SET upper = $1, mid = $2, lower = $3
-          WHERE id = $4
-        `, [data.upper, data.mid, data.lower, id]);
+          SET upper = $1,
+              mid   = $2,
+              lower = $3,
+              open  = COALESCE($4, open),
+              close = COALESCE($5, close)
+          WHERE id = $6
+        `, [
+          data.upper,
+          data.mid,
+          data.lower,
+          data.open,
+          data.close,
+          id
+        ]);
 
         res.writeHead(200);
         res.end("OK");
@@ -318,50 +373,6 @@ async function startPanel() {
 
         ${channelsHTML}
         ${signalsHTML}
-
-        <hr>
-        <h2>Carregar canal via OCR</h2>
-
-        <input id="ocrInput"
-               placeholder="SEIUSDT | 0.0492166011 | 0.0486748989 | 0.0481331967"
-               style="width:500px; padding:6px; font-size:16px;">
-
-        <button id="ocrLoadBtn"
-                style="padding:6px 12px; font-size:16px; margin-left:10px;">
-          Carrega
-        </button>
-
-        <script>
-          function parseOCR(raw) {
-            const parts = raw.split("|").map(p => p.trim());
-            let symbol = parts[0].replace("USDT", "-USDT");
-
-            return {
-              symbol,
-              upper: parseFloat(parts[1]),
-              mid: parseFloat(parts[2]),
-              lower: parseFloat(parts[3])
-            };
-          }
-
-          async function loadOCRToChannel() {
-            const raw = document.getElementById("ocrInput").value.trim();
-            if (!raw) return alert("Introdueix el text OCR");
-
-            const data = parseOCR(raw);
-
-            await fetch("/api/load-ocr", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data)
-            });
-
-            alert("Canal actualitzat!");
-            location.reload();
-          }
-
-          document.getElementById("ocrLoadBtn").onclick = loadOCRToChannel;
-        </script>
 
       </body>
       </html>
