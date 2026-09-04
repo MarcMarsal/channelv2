@@ -1,46 +1,61 @@
-console.log("🔥 main.js carregat (el navegador l'ha trobat)");
-
-const chartEl = document.getElementById("chart");
-console.log("🧱 Element chart:", chartEl);
+console.log("🔥 main.js carregat");
 
 const selector = document.getElementById("symbolSelector");
-console.log("🎛️ Selector trobat:", selector);
+const chartEl = document.getElementById("chart");
 
-console.log("📈 Inicialitzant Lightweight Charts…");
-const chart = LightweightCharts.createChart(chartEl, {
-    layout: { background: { color: "#111" }, textColor: "#DDD" },
-    rightPriceScale: { borderColor: "#555" },
-    timeScale: { borderColor: "#555" }
-});
-
-console.log("📈 Lightweight Charts inicialitzat");
-
-const candleSeries = chart.addCandlestickSeries();
-const upperSeries  = chart.addLineSeries({ color: "red" });
-const midSeries    = chart.addLineSeries({ color: "yellow" });
-const lowerSeries  = chart.addLineSeries({ color: "green" });
+let chart;
 
 async function load(symbol) {
     console.log("🔄 Carregant dades per:", symbol);
 
     const res = await fetch(`/chart-data?symbol=${symbol}`);
-    console.log("📥 Resposta /chart-data:", res);
-
     const data = await res.json();
+
     console.log("📦 JSON rebut:", data);
 
-    candleSeries.setData(data.candles);
-    upperSeries.setData(data.upper);
-    midSeries.setData(data.mid);
-    lowerSeries.setData(data.lower);
+    const candles = data.candles.map(c => ({
+        x: new Date(c.time * 1000),
+        y: [c.open, c.high, c.low, c.close]
+    }));
+
+    const upper = data.upper.map(p => ({ x: new Date(p.time * 1000), y: p.value }));
+    const mid   = data.mid.map(p => ({ x: new Date(p.time * 1000), y: p.value }));
+    const lower = data.lower.map(p => ({ x: new Date(p.time * 1000), y: p.value }));
+
+    const options = {
+        chart: {
+            type: 'candlestick',
+            height: '100%',
+            background: '#111',
+            foreColor: '#DDD'
+        },
+        series: [{
+            name: 'Candles',
+            data: candles
+        },{
+            name: 'Upper',
+            type: 'line',
+            data: upper
+        },{
+            name: 'Mid',
+            type: 'line',
+            data: mid
+        },{
+            name: 'Lower',
+            type: 'line',
+            data: lower
+        }],
+        xaxis: { type: 'datetime' }
+    };
+
+    if (chart) chart.destroy();
+    chart = new ApexCharts(chartEl, options);
+    chart.render();
 
     console.log("📊 Dades aplicades al gràfic");
 }
 
-selector.onchange = () => {
-    console.log("🔁 Canvi de símbol:", selector.value);
-    load(selector.value);
-};
+selector.onchange = () => load(selector.value);
 
 // Carrega inicial
 load("BTC-USDT");
