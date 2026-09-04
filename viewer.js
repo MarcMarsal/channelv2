@@ -4,26 +4,16 @@ import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 
 const app = express();
 
-// 1) Servir la carpeta public/
+// Servir la carpeta public/
 app.use(express.static("public"));
 
-/**
- * /chart-data
- * Retorna:
- *  - candles (OHLC)
- *  - upper/mid/lower del canal FIAT calculat amb el mateix codi del bot
- *
- * IMPORTANT:
- *  Lightweight Charts requereix timestamps en segons, no en ms.
- */
+// Endpoint /chart-data
 app.get("/chart-data", async (req, res) => {
     try {
-        // Permetre canviar symbol via URL:
-        // http://localhost:3001/chart-data?symbol=BTC-USDT
         const symbol = req.query.symbol || "BTC-USDT";
         const timeframe = "15m";
 
-        // 1) Agafar candles de la DB (igual que el bot)
+        // 1) Agafar candles de la DB
         const candlesRes = await client.query(`
             SELECT *
             FROM candles
@@ -32,24 +22,23 @@ app.get("/chart-data", async (req, res) => {
             LIMIT 200
         `, [symbol, timeframe]);
 
+        // 2) Convertir candles a format Lightweight Charts
         const candles = candlesRes.rows.map(c => ({
-            //time: Math.floor(c.timestamp / 1000), // Lightweight Charts → segons
-            time: c.timestamp * 1000
+            time: c.timestamp * 1000,   // 🔥 CORRECCIÓ FIAT → ms, no s
             open: c.open,
             high: c.high,
             low: c.low,
             close: c.close
         }));
 
-        // Si no hi ha candles, retornem buit
         if (candles.length === 0) {
             return res.json({ candles: [], upper: [], mid: [], lower: [] });
         }
 
-        // 2) Calcular el canal FIAT amb el mateix codi del bot
+        // 3) Calcular canal FIAT amb el mateix codi del bot
         const channel = calculateChannelFIAT(candles);
 
-        // 3) Convertir upper/mid/lower a format Lightweight Charts
+        // 4) Convertir upper/mid/lower
         const upper = candles.map(c => ({
             time: c.time,
             value: channel.upper
@@ -65,7 +54,7 @@ app.get("/chart-data", async (req, res) => {
             value: channel.lower
         }));
 
-        // 4) Enviar dades al visor
+        // 5) Enviar dades al viewer
         res.json({ candles, upper, mid, lower });
 
     } catch (err) {
@@ -74,7 +63,7 @@ app.get("/chart-data", async (req, res) => {
     }
 });
 
-// 5) Iniciar servidor
+// Iniciar servidor
 async function startViewer() {
     await initDB();
     const PORT = process.env.PORT || 3001;
