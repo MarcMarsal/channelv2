@@ -13,7 +13,6 @@ app.get("/chart-data", async (req, res) => {
         const symbol = req.query.symbol || "BTC-USDT";
         const timeframe = "15m";
 
-        // 1) Agafar candles de la DB
         const candlesRes = await client.query(`
             SELECT *
             FROM candles
@@ -22,10 +21,9 @@ app.get("/chart-data", async (req, res) => {
             LIMIT 200
         `, [symbol, timeframe]);
 
-        // 2) Convertir candles a format Lightweight Charts
-        //    🔥 Convertim micro/mil·lisegons → segons (Lightweight Charts ho accepta)
         const candles = candlesRes.rows.map(c => ({
-            time: Math.floor(Number(c.timestamp) / 1000),   // 🔥 FIAT: UNIX seconds
+            // assume DB guarda ms → passem a segons per Lightweight Charts
+            time: Math.floor(Number(c.timestamp) / 1000),
             open: Number(c.open),
             high: Number(c.high),
             low: Number(c.low),
@@ -36,10 +34,8 @@ app.get("/chart-data", async (req, res) => {
             return res.json({ candles: [], upper: [], mid: [], lower: [] });
         }
 
-        // 3) Calcular canal FIAT amb el mateix codi del bot
         const channel = calculateChannelFIAT(candles);
 
-        // 4) Convertir upper/mid/lower → també en Number()
         const upper = candles.map(c => ({
             time: c.time,
             value: Number(channel.upper)
@@ -55,7 +51,6 @@ app.get("/chart-data", async (req, res) => {
             value: Number(channel.lower)
         }));
 
-        // 5) Enviar dades al viewer
         res.json({ candles, upper, mid, lower });
 
     } catch (err) {
@@ -64,10 +59,9 @@ app.get("/chart-data", async (req, res) => {
     }
 });
 
-// Iniciar servidor
 async function startViewer() {
     await initDB();
-    const PORT = process.env.PORT || 3001;
+    const PORT = process.env.PORT || 8080;
 
     app.listen(PORT, () =>
         console.log(`📈 Viewer FIAT en marxa → http://localhost:${PORT}`)
