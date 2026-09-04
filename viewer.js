@@ -24,7 +24,7 @@ app.get("/chart-data", async (req, res) => {
 
         // 2) Convertir candles a format Lightweight Charts
         const candles = candlesRes.rows.map(c => ({
-            time: c.timestamp * 1000,   // 🔥 CORRECCIÓ FIAT → ms, no s
+            time: c.timestamp,   // 🔥 CORRECCIÓ FIAT → ms, no s
             open: c.open,
             high: c.high,
             low: c.low,
