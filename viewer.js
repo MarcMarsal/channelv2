@@ -31,13 +31,16 @@ app.get("/chart-data", async (req, res) => {
 
         console.log("📊 Files retornades:", candlesRes.rows.length);
 
-        const candles = candlesRes.rows.map(c => ({
-            time: Math.floor(Number(c.timestamp) / 1000),
-            open: Number(c.open),
-            high: Number(c.high),
-            low: Number(c.low),
-            close: Number(c.close)
-        }));
+        // 🔥 FIAT: invertir l'ordre perquè ApexCharts vol ASC
+        const candles = candlesRes.rows
+            .reverse()   // 🔥 ara sí: de més antic → més recent
+            .map(c => ({
+                time: Math.floor(Number(c.timestamp) / 1000),
+                open: Number(c.open),
+                high: Number(c.high),
+                low: Number(c.low),
+                close: Number(c.close)
+            }));
 
         if (candles.length === 0) {
             console.log("⚠️ No hi ha candles per aquest símbol");
@@ -75,4 +78,3 @@ async function startViewer() {
 }
 
 startViewer();
-
