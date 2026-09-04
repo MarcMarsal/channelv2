@@ -309,16 +309,12 @@ async function startPanel() {
           UPDATE channels_fiat
           SET upper = $1,
               mid   = $2,
-              lower = $3,
-              open  = COALESCE($4, open),
-              close = COALESCE($5, close)
-          WHERE id = $6
+              lower = $3             
+          WHERE id = $4
         `, [
           data.upper,
           data.mid,
           data.lower,
-          data.open,
-          data.close,
           id
         ]);
 
