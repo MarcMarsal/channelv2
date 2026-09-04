@@ -25,7 +25,7 @@ app.get("/chart-data", async (req, res) => {
             SELECT *
             FROM candles
             WHERE symbol = $1 AND timeframe = $2
-            ORDER BY timestamp ASC
+            ORDER BY timestamp DESC
             LIMIT 200
         `, [symbol, timeframe]);
 
