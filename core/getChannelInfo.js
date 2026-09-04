@@ -5,7 +5,7 @@ import { client } from "../db/client.js";
 // -------------------------------------------------------------
 // LLEGIR ÚLTIMES ALERTES FIAT 15m
 // -------------------------------------------------------------
-async function getActiveSignals() {
+export async function getActiveSignals() {
   const q = await client.query(`
     SELECT
       id,
@@ -29,7 +29,7 @@ async function getActiveSignals() {
 // -------------------------------------------------------------
 // LLEGIR ÚLTIMS CANALS FIAT 15m (últims 6 per symbol)
 // -------------------------------------------------------------
-async function getChannels() {
+export async function getChannels() {
   const q = await client.query(`
     SELECT *
     FROM (
