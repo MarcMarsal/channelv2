@@ -23,8 +23,9 @@ app.get("/chart-data", async (req, res) => {
         `, [symbol, timeframe]);
 
         // 2) Convertir candles a format Lightweight Charts
+        //    🔥 Convertim micro/mil·lisegons → segons (Lightweight Charts ho accepta)
         const candles = candlesRes.rows.map(c => ({
-            time: Number(c.timestamp),   // 🔥 IMPORTANT: ha de ser número
+            time: Math.floor(Number(c.timestamp) / 1000),   // 🔥 FIAT: UNIX seconds
             open: Number(c.open),
             high: Number(c.high),
             low: Number(c.low),
