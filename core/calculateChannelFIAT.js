@@ -9,7 +9,6 @@ export function calculateChannelFIAT(candles) {
             dev: 0,
             devlen: 0,
             mid: 0,
-            midline: 0,
             upper: 0,
             lower: 0,
             operable: false,
@@ -17,48 +16,60 @@ export function calculateChannelFIAT(candles) {
         };
     }
 
-    // Últimes len veles
     const closes = candles.map(c => Number(c.close));
     const window = closes.slice(-len);
 
-    // 1) SLOPE SUAU (ponderació suau)
-    let num = 0;
-    let wsum = 0;
+    // -----------------------------
+    // 1) linreg equivalent
+    // -----------------------------
+    function linRegEquivalent(values, len, offset) {
+        let sumX = 0;
+        let sumY = 0;
+        let sumXY = 0;
+        let sumXX = 0;
 
-    for (let i = 0; i < len - 1; i++) {
-        const w = (i + 1) / (len * 2);   // ponderació suau
-        num += w * (window[i] - window[i + 1]);
-        wsum += w;
+        for (let i = 0; i < len; i++) {
+            const x = i;                     // 0 = antic, len-1 = actual
+            const y = values[len - 1 - i];   // indexació correcta
+            sumX += x;
+            sumY += y;
+            sumXY += x * y;
+            sumXX += x * x;
+        }
+
+        const slope = (len * sumXY - sumX * sumY) / (len * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / len;
+
+        const xTarget = len - 1 - offset;   // offset 0 = actual
+        return intercept + slope * xTarget;
     }
 
-    const slope = num / wsum;
+    // slope equivalent a TradingView
+    const lr0 = linRegEquivalent(window, len, 0);
+    const lr1 = linRegEquivalent(window, len, 1);
+    const slope = lr0 - lr1;
 
-    // 2) MID (SMA)
+    // mid equivalent
     const mid = window.reduce((a, b) => a + b, 0) / len;
 
-    // 3) INTERCEPT centrat
-    const intercept = mid - slope * Math.floor(len / 2);
+    // intercept equivalent
+    const intercept =
+        mid -
+        slope * Math.floor(len / 2) +
+        ((1 - (len % 2)) / 2) * slope;
 
-    // 4) DEV SUAU (ponderació suau)
-    let d = 0;
-    let wsumDev = 0;
-
-    for (let i = 0; i < len; i++) {
-        const w = (i + 1) / (len * 2);
-        const expected = intercept + slope * (len - i);
-        d += w * Math.pow(window[i] - expected, 2);
-        wsumDev += w;
-    }
-
-    const dev = Math.sqrt(d / wsumDev);
-
-    // 5) ENDY (punt final del canal)
+    // endy equivalent
     const endy = intercept + slope * (len - 1);
 
-    // 6) CANAL
+    // desviació equivalent
+    let dev = 0;
+    for (let x = 0; x < len; x++) {
+        const expected = slope * (len - x) + intercept;
+        dev += Math.pow(window[x] - expected, 2);
+    }
+    dev = Math.sqrt(dev / len);
+
     const devlen = dev * devlenFactor;
-    const upper = endy + devlen;
-    const lower = endy - devlen;
 
     return {
         slope,
@@ -66,9 +77,8 @@ export function calculateChannelFIAT(candles) {
         dev,
         devlen,
         mid: endy,
-        midline: endy,
-        upper,
-        lower,
+        upper: endy + devlen,
+        lower: endy - devlen,
         operable: true,
         reason: ""
     };
