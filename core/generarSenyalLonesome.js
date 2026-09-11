@@ -7,7 +7,7 @@ import { calcularAccioFIAT } from "./calcularAccioFIAT.js";
 import { classifySlope } from "./logic/slope_direction.js";
 import { isNoise } from "./logic/noise_detection.js";
 import { detectCas } from "./logic/cas_detection.js";
-import { shouldEnter } from "./core/logic/entry_validator.js";
+import { shouldEnter } from "./logic/entry_validator.js";
 import { calculateTpSl } from "./logic/tp_sl_calculation.js";
 import { buildAlert } from "./logic/alert_builder.js";
 
