@@ -1,26 +1,26 @@
 // tp_sl_calculation.js
-// Pure Lonesome TP/SL logic
+// Pure Lonesome TP/SL logic (correct)
 
-export function calculateTpSl(cas, last, slopeDir) {
-  const { upper, lower, mid, close } = last;
+export function calculateTpSl(last, atr) {
+  const { mid, upper, lower, close, accio } = last;
 
   let tp, sl;
 
-  if (cas === 2) {
-    // breakout + reingrés immediat
-    if (slopeDir.startsWith("up")) {
-      tp = mid;      // mean reversion
-      sl = lower;    // breakout inferior
-    } else {
-      tp = mid;
-      sl = upper;
-    }
+  // REINGRÉS (CAS 2 i CAS 3)
+  if (accio.startsWith("reingres")) {
+    tp = mid;
+    sl = accio === "reingres_superior"
+      ? upper + atr
+      : lower - atr;
   }
 
-  if (cas === 3) {
-    // reingrés tardà
-    tp = mid;        // Lonesome sempre apunta al midline
-    sl = slopeDir.startsWith("up") ? lower : upper;
+  // BREAKOUT
+  if (accio.startsWith("breakout")) {
+    tp = accio === "breakout_superior"
+      ? lower
+      : upper;
+
+    sl = mid;
   }
 
   return { tp, sl };
