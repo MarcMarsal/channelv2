@@ -4,12 +4,12 @@ import { client } from "../db/client.js";
 import { formatSpainDate, formatSpainTime } from "./utils.js";
 
 import { calcularAccioFIAT } from "./calcularAccioFIAT.js";
-import { classifySlope } from "./slope_direction.js";
-import { isNoise } from "./noise_detection.js";
-import { detectCas } from "./cas_detection.js";
+import { classifySlope } from "./logic/slope_direction.js";
+import { isNoise } from "./logic/noise_detection.js";
+import { detectCas } from "./logic/cas_detection.js";
 import { shouldEnter } from "./core/logic/entry_validator.js";
-import { calculateTpSl } from "./tp_sl_calculation.js";
-import { buildAlert } from "./alert_builder.js";
+import { calculateTpSl } from "./logic/tp_sl_calculation.js";
+import { buildAlert } from "./logic/alert_builder.js";
 
 // -------------------------------------------------------------
 // GENERADOR PRINCIPAL LONESOME PUR
