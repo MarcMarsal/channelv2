@@ -1,12 +1,8 @@
 // core/logic/entry_validator.js
-import { slopeMatchesReingresDirection } from "./slope_direction.js";
+// Pure Lonesome entry rules
 
-export function shouldEnter(cas, prev, last) {
-  if (cas === 1) return true; // sempre
-
-  if (cas === 2) {
-    return slopeMatchesReingresDirection(last); // només si slope a favor
-  }
-
-  return false;
+export function shouldEnter(cas) {
+  if (cas === 2) return true; // breakout + reingrés immediat
+  if (cas === 3) return true; // reingrés tardà
+  return false;               // soroll o no context
 }
