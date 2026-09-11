@@ -10,9 +10,10 @@ import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
 import { generarSenyalFIAT } from "./core/generarSenyalFIAT.js";
 
 const ACTIVE_CRYPTOS = [
-  "BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","SEI-USDT",
-  "APT-USDT","ATOM-USDT","NEAR-USDT","OP-USDT","ARB-USDT","LINK-USDT",
-  "RENDER-USDT","FET-USDT","INJ-USDT","SUI-USDT","ONDO-USDT"
+  "APT-USDT","ARB-USDT","ATOM-USDT","AVAX-USDT","BNB-USDT",
+  "BTC-USDT","ETH-USDT","FET-USDT","INJ-USDT","LINK-USDT",
+  "NEAR-USDT","ONDO-USDT","OP-USDT","RENDER-USDT","SEI-USDT",
+  "SOL-USDT","SUI-USDT","WXT-USDT"
 ];
 
 async function getCandlesFromDB(symbol, timeframe, limit = 200) {
