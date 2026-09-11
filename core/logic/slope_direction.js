@@ -1,14 +1,16 @@
-// core/logic/slope_direction.js
+// slope_direction.js
+// LonesomeTheBlue slope classification (pure)
 
-export function slopeMatchesReingresDirection(canal) {
-  const slope = canal.slope;
-  const isSuperior = canal.accio.includes("superior");
-
-  // reingres_superior → moviment cap avall → SHORT
-  if (isSuperior) {
-    return slope < 0; // slope negatiu = tendència baixista
+export function classifySlope(slope, prevSlope) {
+  if (slope > 0) {
+    if (slope > prevSlope) return { dir: "up_strong", arrow: "⇑" };
+    return { dir: "up_weak", arrow: "⇗" };
   }
 
-  // reingres_inferior → moviment cap amunt → LONG
-  return slope > 0; // slope positiu = tendència alcista
+  if (slope < 0) {
+    if (slope < prevSlope) return { dir: "down_strong", arrow: "⇓" };
+    return { dir: "down_weak", arrow: "⇘" };
+  }
+
+  return { dir: "flat", arrow: "⇒" }; // No trend
 }
