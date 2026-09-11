@@ -1,4 +1,4 @@
-// bot_channels_upgraded.js — FIAT LonesomeTheBlue (canals + punxada + reingrés + entrada)
+// bot_channels_upgraded.js — LonesomeTheBlue PUR (canals FIAT + breakout + reingrés + criteris Lonesome)
 
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
@@ -7,7 +7,7 @@ import { alreadySent2 } from "./db/alreadySent2.js";
 import { formatSpainDate, formatSpainTime } from "./core/utils.js";
 import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
-import { generarSenyalFIAT } from "./core/generarSenyalFIAT.js";
+import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
 
 const ACTIVE_CRYPTOS = [
   "APT-USDT","ARB-USDT","ATOM-USDT","AVAX-USDT","BNB-USDT",
@@ -29,55 +29,38 @@ async function getCandlesFromDB(symbol, timeframe, limit = 200) {
 }
 
 export async function processSymbolFIAT(symbol, candles) {
-  if (!candles || candles.length < 2) return;
+  if (!candles || candles.length < 3) return;
 
-  const closedCandle = candles[candles.length - 2]; // VELA TANCADA
-  const openCandle   = candles[candles.length - 1]; // VELA OBERTA
+  const prevCandle   = candles[candles.length - 3];
+  const closedCandle = candles[candles.length - 2];
+  const openCandle   = candles[candles.length - 1];
 
   const tsClosed = closedCandle.timestamp;
   const tsOpen   = openCandle.timestamp;
 
-  const existingClosed = await client.query(`
-    SELECT *
-    FROM channels_fiat
-    WHERE symbol = $1 AND timestamp = $2
-  `, [symbol, tsClosed]);
-
-  // Canal recalculat per la vela oberta (només per INSERT)
+  // -------------------------------------------------------------
+  // CANAL FIAT (Lonesome el necessita)
+  // -------------------------------------------------------------
   const canalOpen = calculateChannelFIAT(candles);
 
   // -------------------------------------------------------------
-  // 1) CANAL NOU SOBRE LA VELA OBERTA (si no existeix)
+  // 1) INSERT canal obert (igual que FIAT)
   // -------------------------------------------------------------
   const existingOpen = await client.query(`
-    SELECT *
-    FROM channels_fiat
+    SELECT id FROM channels_fiat
     WHERE symbol = $1 AND timestamp = $2
   `, [symbol, tsOpen]);
 
   if (existingOpen.rows.length === 0) {
-  
-    // 🔥 EXECUCIÓ REAL
     await client.query(`
       INSERT INTO channels_fiat (
-        symbol,
-        slope,
-        intercept,
-        dev,
-        devlen,
-        mid,
-        timestamp,
-        created_at,
-        upper,
-        lower,
-        operable,
-        reason,
-        open,
-        close,
-        data_es,
-        hora_es,
-        accio,
-        confirm
+        symbol, slope, intercept, dev, devlen, mid,
+        timestamp, created_at,
+        upper, lower,
+        operable, reason,
+        open, close,
+        data_es, hora_es,
+        accio, confirm
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7,
@@ -108,8 +91,14 @@ export async function processSymbolFIAT(symbol, candles) {
   }
 
   // -------------------------------------------------------------
-  // 2) CANAL TANCAT SOBRE LA VELA TANCADA (FIAT REAL)
+  // 2) CANAL TANCAT (FIAT) → aquí substituïm FIAT per Lonesome
   // -------------------------------------------------------------
+  const existingClosed = await client.query(`
+    SELECT *
+    FROM channels_fiat
+    WHERE symbol = $1 AND timestamp = $2
+  `, [symbol, tsClosed]);
+
   if (existingClosed.rows.length > 0 && closedCandle.confirm === true) {
 
     const canalDB = await client.query(`
@@ -120,12 +109,9 @@ export async function processSymbolFIAT(symbol, candles) {
     `, [symbol, tsClosed]);
 
     const canalReal = canalDB.rows[0];
+    if (!canalReal) return;
 
-    if (!canalReal) {
-      console.log(`FIAT: canal no trobat a DB per ${symbol} @ ${tsClosed}`);
-      return;
-    }
-
+    // Acció FIAT (Lonesome la necessita)
     const accio = calcularAccioFIAT(
       closedCandle.open,
       closedCandle.close,
@@ -133,6 +119,7 @@ export async function processSymbolFIAT(symbol, candles) {
       canalReal.lower
     );
 
+    // Actualitzar canal (igual que FIAT)
     await client.query(`
       UPDATE channels_fiat
       SET close   = $1,
@@ -145,13 +132,23 @@ export async function processSymbolFIAT(symbol, candles) {
       existingClosed.rows[0].id
     ]);
 
-    if (accio !== "") {
+    // ---------------------------------------------------------
+    // SUBSTITUCIÓ FIAT → LONESOME PUR
+    // ---------------------------------------------------------
+
+    // Només reingrés → Lonesome pur
+    if (accio.includes("reingres")) {
+
       const exists = await alreadySent2(symbol, "15m", tsClosed);
       if (!exists) {
-        await generarSenyalFIAT(
-          symbol, tsClosed, accio,
-          closedCandle.open, closedCandle.close,
-          canalReal.upper, canalReal.lower,
+
+        // Aquí FIAT feia generarSenyalFIAT
+        // Ara fem Lonesome pur
+        await generarSenyalLonesome(
+          symbol,
+          tsClosed,
+          prevCandle,
+          closedCandle,
           canalReal
         );
       }
@@ -172,7 +169,7 @@ async function mainLoop() {
 
 async function startBot() {
   await initDB();
-  console.log("Bot FIAT LonesomeTheBlue 15m en marxa");
+  console.log("Bot LonesomeTheBlue PUR 15m en marxa");
   cron.schedule("* * * * *", mainLoop);
 }
 
