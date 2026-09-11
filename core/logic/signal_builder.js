@@ -1,17 +1,34 @@
-// core/logic/signal_builder.js
+// alert_builder.js
+// Full validation alert for debugging
 
-export function buildSignalFIAT(symbol, last, TP, SL, cas) {
-  return {
-    symbol,
-    timestamp: last.timestamp,
-    accio: last.accio,
-    open: last.open,
-    close: last.close,
-    upper: last.upper,
-    lower: last.lower,
-    mid: last.mid,
-    cas,
-    TP,
-    SL
-  };
+export function buildAlert({
+  slope,
+  slopeDir,
+  slopeArrow,
+  dev,
+  isNoise,
+  prevAccio,
+  lastAccio,
+  cas,
+  tp,
+  sl
+}) {
+  return `
+REINGRÉS DETECTAT
+
+Slope: ${slope} (${slopeDir}) ${slopeArrow}
+Desviació (dev): ${dev}
+Soroll: ${isNoise ? "SÍ" : "NO"}
+
+Acció anterior: ${prevAccio}
+Acció actual: ${lastAccio}
+
+CAS final: ${cas === 1 ? "CAS 1 — soroll"
+            : cas === 2 ? "CAS 2 — breakout immediat"
+            : cas === 3 ? "CAS 3 — reingrés tardà"
+            : "CAS 0 — no context"}
+
+TP: ${tp}
+SL: ${sl}
+`;
 }
