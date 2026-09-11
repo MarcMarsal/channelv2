@@ -10,8 +10,10 @@ import { detectCas } from "./cas_detection.js";
 import { shouldEnter } from "./core/logic/entry_validator.js";
 import { calculateTpSl } from "./tp_sl_calculation.js";
 import { buildAlert } from "./alert_builder.js";
-import { buildSignal } from "./signal_builder.js";
 
+// -------------------------------------------------------------
+// GENERADOR PRINCIPAL
+// -------------------------------------------------------------
 export async function generarSenyalLonesome(
   symbol,
   timestamp,
