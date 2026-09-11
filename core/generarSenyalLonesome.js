@@ -1,4 +1,4 @@
-// generarSenyalLonesome.js — LonesomeTheBlue PUR (amb debug complet)
+// generarSenyalLonesome.js — LonesomeTheBlue PUR (adaptat a la taula real de signals_channels)
 
 import { client } from "../db/client.js";
 import { formatSpainDate, formatSpainTime } from "./utils.js";
@@ -12,7 +12,7 @@ import { calculateTpSl } from "./tp_sl_calculation.js";
 import { buildAlert } from "./alert_builder.js";
 
 // -------------------------------------------------------------
-// GENERADOR PRINCIPAL
+// GENERADOR PRINCIPAL LONESOME PUR
 // -------------------------------------------------------------
 export async function generarSenyalLonesome(
   symbol,
@@ -23,14 +23,14 @@ export async function generarSenyalLonesome(
 ) {
   const date_es = formatSpainDate(timestamp);
   const hora_es = formatSpainTime(timestamp);
+  const timestamp_es = timestamp;
 
-  // -------------------------------------------------------------
-  // 1) VALIDACIONS BÀSIQUES
-  // -------------------------------------------------------------
+  // 1) Canal operable?
   if (!canal || !canal.operable) {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
+      timestamp_es,
       date_es,
       hora_es,
       prevAccio: null,
@@ -50,9 +50,7 @@ export async function generarSenyalLonesome(
     });
   }
 
-  // -------------------------------------------------------------
-  // 2) ACCIÓ FIAT (breakout / reingrés)
-  // -------------------------------------------------------------
+  // 2) Acció FIAT (breakout / reingrés)
   const prevAccio = calcularAccioFIAT(
     prevCandle.open,
     prevCandle.close,
@@ -71,6 +69,7 @@ export async function generarSenyalLonesome(
     return await guardarSenyalDebug({
       symbol,
       timestamp,
+      timestamp_es,
       date_es,
       hora_es,
       prevAccio,
@@ -90,22 +89,16 @@ export async function generarSenyalLonesome(
     });
   }
 
-  // -------------------------------------------------------------
-  // 3) SLOPE DIR
-  // -------------------------------------------------------------
+  // 3) Slope dir
   const { dir: slopeDir, arrow } = classifySlope(
     canal.slope,
     prevCandle.slope ?? canal.slope
   );
 
-  // -------------------------------------------------------------
-  // 4) SOROLL
-  // -------------------------------------------------------------
+  // 4) Soroll
   const noise = isNoise(slopeDir, canal.dev);
 
-  // -------------------------------------------------------------
   // 5) CAS
-  // -------------------------------------------------------------
   const cas = detectCas(
     { accio: prevAccio },
     { accio: lastAccio },
@@ -113,15 +106,14 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
-  // -------------------------------------------------------------
-  // 6) DECISIÓ D’ENTRADA
-  // -------------------------------------------------------------
+  // 6) Decisió d’entrada
   const entra = shouldEnter(cas);
 
   if (!entra) {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
+      timestamp_es,
       date_es,
       hora_es,
       prevAccio,
@@ -141,15 +133,14 @@ export async function generarSenyalLonesome(
     });
   }
 
-  // -------------------------------------------------------------
-  // 7) TP/SL LONESOME
-  // -------------------------------------------------------------
+  // 7) TP/SL Lonesome
   const { tp, sl } = calculateTpSl(cas, closedCandle, slopeDir);
 
   if (!tp || !sl) {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
+      timestamp_es,
       date_es,
       hora_es,
       prevAccio,
@@ -169,9 +160,7 @@ export async function generarSenyalLonesome(
     });
   }
 
-  // -------------------------------------------------------------
-  // 8) ALERTA COMPLETA
-  // -------------------------------------------------------------
+  // 8) Alert text complet
   const alerta = buildAlert({
     slope: canal.slope,
     slopeDir,
@@ -185,14 +174,13 @@ export async function generarSenyalLonesome(
     sl
   });
 
-  // -------------------------------------------------------------
-  // 9) SENYAL FINAL (trade)
-  // -------------------------------------------------------------
+  // 9) Senyal final (trade)
   const entry = closedCandle.close;
 
   return await guardarSenyalDebug({
     symbol,
     timestamp,
+    timestamp_es,
     date_es,
     hora_es,
     prevAccio,
@@ -213,12 +201,13 @@ export async function generarSenyalLonesome(
 }
 
 // -------------------------------------------------------------
-// FUNCIO AUXILIAR: GUARDAR SENYAL AMB TOT EL DEBUG
+// GUARDAR SENYAL AMB TOT EL CONTEXT (DEBUG COMPLET)
 // -------------------------------------------------------------
 async function guardarSenyalDebug(data) {
   const {
     symbol,
     timestamp,
+    timestamp_es,
     date_es,
     hora_es,
     prevAccio,
@@ -233,9 +222,10 @@ async function guardarSenyalDebug(data) {
     entra,
     motiu,
     alerta,
-    canal,
-    closedCandle
+    canal
   } = data;
+
+  const timestamp_ms = timestamp; // ja ve en ms al teu sistema
 
   await client.query(
     `
@@ -243,6 +233,7 @@ async function guardarSenyalDebug(data) {
       symbol,
       timeframe,
       type,
+      color,
       entry,
       tp,
       sl,
@@ -250,6 +241,7 @@ async function guardarSenyalDebug(data) {
       timestamp_ms,
       date_es,
       hora_es,
+      timestamp_es,
       created_at,
       closed,
       slope,
@@ -261,53 +253,57 @@ async function guardarSenyalDebug(data) {
       len,
       operable,
       reason,
+      stage,
+      rr,
+      result,
+      timestamp_exit,
+      price_exit,
+      duration_ms,
+      date_exit_es,
+      hora_exit_es,
       prev_accio,
       cas,
-      slope_dir,
-      arrow,
-      noise,
-      entra,
-      motiu,
-      alert
+      alerta
     ) VALUES (
-      $1, '15m', $2,
-      $3, $4, $5,
-      $6, $6,
+      $1, '15m', $2, $3,
+      $4, $5, $6,
       $7, $8,
+      $9, $10, $11,
       EXTRACT(EPOCH FROM NOW()) * 1000,
-      $9,
-      $10, $11, $12, $13, $14, $15, $16,
-      $17, $18,
-      $19, $20, $21, $22, $23, $24, $25
+      $12,
+      $13, $14, $15, $16, $17, $18, $19,
+      $20, $21, $22, $23,
+      NULL, NULL, NULL, NULL, NULL,
+      $24, $25, $26
     )
   `,
     [
       symbol,                 // $1
-      lastAccio || "-",       // $2
-      entry,                  // $3
-      tp,                     // $4
-      sl,                     // $5
-      timestamp,              // $6
-      date_es,                // $7
-      hora_es,                // $8
-      !entra,                 // $9 closed = true si NO entra
-      canal.slope,            // $10
-      canal.intercept,        // $11
-      canal.endy,             // $12
-      canal.dev,              // $13
-      canal.devlen,           // $14
-      canal.mid,              // $15
-      canal.len,              // $16
-      canal.operable,         // $17
-      canal.reason,           // $18
-      prevAccio,              // $19
-      cas,                    // $20
-      slopeDir,               // $21
-      arrow,                  // $22
-      noise,                  // $23
-      entra,                  // $24
-      motiu,                  // $25
-      alerta                  // $26
+      lastAccio || "-",       // $2 type
+      entra ? "blue" : "yellow", // $3 color (trade vs info)
+      entry,                  // $4
+      tp,                     // $5
+      sl,                     // $6
+      timestamp,              // $7
+      timestamp_ms,           // $8
+      date_es,                // $9
+      hora_es,                // $10
+      timestamp_es,           // $11
+      !entra,                 // $12 closed = true si NO entra
+      canal?.slope ?? null,   // $13
+      canal?.intercept ?? null, // $14
+      canal?.endy ?? null,    // $15
+      canal?.dev ?? null,     // $16
+      canal?.devlen ?? null,  // $17
+      canal?.mid ?? null,     // $18
+      canal?.len ?? null,     // $19
+      canal?.operable ?? true,// $20
+      canal?.reason ?? null,  // $21
+      null,                   // $22 stage
+      null,                   // $23 rr
+      prevAccio || null,      // $24
+      cas || null,            // $25
+      alerta || null          // $26
     ]
   );
 
