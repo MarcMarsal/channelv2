@@ -1,35 +1,27 @@
-// core/logic/tp_sl_calculation.js
-import { slopeMatchesReingresDirection } from "./slope_direction.js";
+// tp_sl_calculation.js
+// Pure Lonesome TP/SL logic
 
-export function calculateTPSL(cas, prev, last) {
-  const slopeFavor = slopeMatchesReingresDirection(last);
+export function calculateTpSl(cas, last, slopeDir) {
+  const { upper, lower, mid, close } = last;
 
-  const mid   = last.mid;
-  const upper = last.upper;
-  const lower = last.lower;
+  let tp, sl;
 
-  const isSuperior = last.accio.includes("superior");
-
-  let TP;
-
-  if (cas === 1) {
-    // CAS 1 — breakout → reingrés immediat
-    if (slopeFavor) {
-      TP = mid; // a favor → midline
+  if (cas === 2) {
+    // breakout + reingrés immediat
+    if (slopeDir.startsWith("up")) {
+      tp = mid;      // mean reversion
+      sl = lower;    // breakout inferior
     } else {
-      TP = isSuperior
-        ? (mid + upper) / 2
-        : (mid + lower) / 2; // en contra → meitat
+      tp = mid;
+      sl = upper;
     }
   }
 
-  if (cas === 2) {
-    // CAS 2 — reingrés tardà → TP curt
-    TP = mid;
+  if (cas === 3) {
+    // reingrés tardà
+    tp = mid;        // Lonesome sempre apunta al midline
+    sl = slopeDir.startsWith("up") ? lower : upper;
   }
 
-  // SL sempre al costat oposat del breakout
-  const SL = isSuperior ? lower : upper;
-
-  return { TP, SL };
+  return { tp, sl };
 }
