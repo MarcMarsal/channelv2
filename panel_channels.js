@@ -1,13 +1,13 @@
-// panel_channels.js — FIAT 15m (punxada + entrada + TP/SL/RR)
+// panel_channels.js — FIAT + LonesomeTheBlue (sense OCR, amb motius i info Lonesome)
 
 import http from "http";
 import { initDB, client } from "./db/client.js";
 import { formatSpainTime } from "./core/utils.js";
 import { DECIMALS, fmt } from "./core/decimals.js";
-import { getActiveSignals, getChannels} from "./core/getChannelInfo.js";
+import { getActiveSignals, getChannels } from "./core/getChannelInfo.js";
 
 // -------------------------------------------------------------
-// TAULA DE CANALS FIAT 15m
+// TAULA DE CANALS FIAT 15m (sense OCR)
 // -------------------------------------------------------------
 function renderChannelsTable(channels) {
   let rows = "";
@@ -44,7 +44,7 @@ function renderChannelsTable(channels) {
   return `
     <h2>Canals FIAT 15m (últims 6 per cripto)</h2>
 
-    <!-- FILTRE + SYMBOL + OCR A DALT -->
+    <!-- FILTRE + SYMBOL -->
     <div style="margin-bottom:20px;">
 
       <label style="color:#0f0; font-size:18px;">
@@ -64,19 +64,6 @@ function renderChannelsTable(channels) {
             .map(sym => `<option value="${sym}">${sym}</option>`).join("")}
         </select>
       </label>
-
-      <!-- OCR INPUT A DALT -->
-      <label style="color:#0f0; font-size:18px; margin-left:20px;">
-        Carregar OCR:
-        <input id="ocrInput"
-               placeholder="SEIUSDT | upper | mid | lower | open | close"
-               style="width:420px; padding:6px; font-size:16px;">
-      </label>
-
-      <button id="ocrLoadBtn"
-              style="padding:6px 12px; font-size:16px; margin-left:10px;">
-        Carrega
-      </button>
 
     </div>
 
@@ -116,38 +103,6 @@ function renderChannelsTable(channels) {
           row.style.display = hide ? "none" : "";
         });
       });
-
-      function parseOCR(raw) {
-        const parts = raw.split("|").map(p => p.trim());
-        let symbol = parts[0].replace("USDT", "-USDT");
-
-        return {
-          symbol,
-          upper: parseFloat(parts[1]),
-          mid: parseFloat(parts[2]),
-          lower: parseFloat(parts[3]),
-          open: parts[4] ? parseFloat(parts[4]) : null,
-          close: parts[5] ? parseFloat(parts[5]) : null
-        };
-      }
-
-      async function loadOCRToChannel() {
-        const raw = document.getElementById("ocrInput").value.trim();
-        if (!raw) return alert("Introdueix el text OCR");
-
-        const data = parseOCR(raw);
-
-        await fetch("/api/load-ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-
-        alert("Canal actualitzat!");
-        location.reload();
-      }
-
-      document.getElementById("ocrLoadBtn").onclick = loadOCRToChannel;
     </script>
 
     <table>
@@ -173,14 +128,17 @@ function renderChannelsTable(channels) {
 }
 
 // -------------------------------------------------------------
-// TAULA D'ALERTES FIAT 15m (Entrada + TP/SL)
+// TAULA D'ALERTES LONESOME PUR (Entrada + TP/SL + motius)
 // -------------------------------------------------------------
 function renderActiveSignalsTable(signals) {
   let rows = "";
 
   for (const s of signals) {
+
+    const color = s.entra ? "lime" : "orange";
+
     rows += `
-      <tr style="color:cyan">
+      <tr style="color:${color}">
         <td>${s.id}</td>
         <td>${s.symbol}</td>
         <td>${s.type}</td>
@@ -190,6 +148,14 @@ function renderActiveSignalsTable(signals) {
         <td>${fmt(s.tp, s.symbol)}</td>
         <td>${fmt(s.sl, s.symbol)}</td>
 
+        <td>${s.entra ? "ENTRA" : "NO ENTRA"}</td>
+        <td>${s.motiu || "-"}</td>
+        <td>${s.cas || "-"}</td>
+        <td>${s.slope_dir || "-"}</td>
+        <td>${s.noise ? "sí" : "no"}</td>
+
+        <td>${s.alerta || "-"}</td>
+
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
         <td>${formatSpainTime(s.created_at)}</td>
@@ -198,7 +164,7 @@ function renderActiveSignalsTable(signals) {
   }
 
   return `
-    <h2>Últimes 30 alertes FIAT 15m (breakout / reingrés)</h2>
+    <h2>Alertes LonesomeTheBlue 15m (només reingressos)</h2>
     <table>
       <thead>
         <tr>
@@ -208,6 +174,12 @@ function renderActiveSignalsTable(signals) {
           <th>Entrada (TP/SL)</th>
           <th>TP</th>
           <th>SL</th>
+          <th>Resultat</th>
+          <th>Motiu</th>
+          <th>CAS</th>
+          <th>SlopeDir</th>
+          <th>Soroll</th>
+          <th>Alerta</th>
           <th>Data</th>
           <th>Hora</th>
           <th>Creat</th>
@@ -221,54 +193,12 @@ function renderActiveSignalsTable(signals) {
 }
 
 // -------------------------------------------------------------
-// PANELL PRINCIPAL FIAT 15m
+// PANELL PRINCIPAL FIAT + LONESOME PUR
 // -------------------------------------------------------------
 async function startPanel() {
   await initDB();
 
   http.createServer(async (req, res) => {
-
-    // ---------------------------------------------------------
-    // API: CARREGAR OCR → ACTUALITZAR ÚLTIM CANAL
-    // ---------------------------------------------------------
-    if (req.url === "/api/load-ocr" && req.method === "POST") {
-      let body = "";
-      req.on("data", chunk => body += chunk);
-      req.on("end", async () => {
-        const data = JSON.parse(body);
-
-        const q = await client.query(`
-          SELECT id FROM channels_fiat
-          WHERE symbol = $1
-          ORDER BY timestamp DESC
-          LIMIT 1
-        `, [data.symbol]);
-
-        if (q.rows.length === 0) {
-          res.writeHead(404);
-          return res.end("No canal found");
-        }
-
-        const id = q.rows[0].id;
-
-        await client.query(`
-          UPDATE channels_fiat
-          SET upper = $1,
-              mid   = $2,
-              lower = $3             
-          WHERE id = $4
-        `, [
-          data.upper,
-          data.mid,
-          data.lower,
-          id
-        ]);
-
-        res.writeHead(200);
-        res.end("OK");
-      });
-      return;
-    }
 
     // ---------------------------------------------------------
     // PANELL HTML
@@ -310,7 +240,7 @@ async function startPanel() {
         </style>
       </head>
       <body>
-        <h1>Panell FIAT 15m — LonesomeTheBlue</h1>
+        <h1>Panell LonesomeTheBlue 15m</h1>
         <p><b>Última actualització:</b> ${lastUpdate}</p>
 
         ${channelsHTML}
@@ -326,10 +256,10 @@ async function startPanel() {
     }
 
     res.writeHead(200);
-    res.end("Panell FIAT 15m OK");
+    res.end("Panell LonesomeTheBlue 15m OK");
   }).listen(process.env.PORT || 3000);
 
-  console.log("Panell FIAT 15m en marxa");
+  console.log("Panell LonesomeTheBlue 15m en marxa");
 }
 
 startPanel();
