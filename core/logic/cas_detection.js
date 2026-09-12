@@ -1,8 +1,3 @@
-// cas_detection.js
-// Pure Lonesome CAS detection
-
-import { isNoise } from "./noise_detection.js";
-
 export function detectCas(prev, last, slopeDir, dev) {
   // CAS 1 — soroll (no trend o canal estret)
   if (isNoise(slopeDir, dev)) return 1;
@@ -13,11 +8,23 @@ export function detectCas(prev, last, slopeDir, dev) {
   const prevIsBreakout = p.startsWith("breakout");
   const lastIsReingres = l.startsWith("reingres");
 
-  // CAS 2 — breakout + reingrés immediat
-  if (prevIsBreakout && lastIsReingres) return 2;
+  // IMPORTANT: breakoutAge ve de calcularAccioFIAT.js (memòria institucional)
+  const age = prev?.breakoutAge ?? null;
 
-  // CAS 3 — reingrés tardà
-  if (!prevIsBreakout && lastIsReingres) return 3;
+  // -------------------------------------------------------------
+  // PATCH INSTITUCIONAL — Reingrés immediat (1–2 veles)
+  // -------------------------------------------------------------
 
-  return 0; // No trade context
+  // CAS 2 — breakout + reingrés immediat (age 0–2)
+  if (prevIsBreakout && lastIsReingres && age !== null && age <= 2) {
+    return 2;
+  }
+
+  // CAS 3 — reingrés immediat tardà (age 1–2)
+  if (!prevIsBreakout && lastIsReingres && age !== null && age <= 2) {
+    return 3;
+  }
+
+  // CAS tardà — descartat (age >= 3)
+  return 0;
 }
