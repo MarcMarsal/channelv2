@@ -13,14 +13,15 @@ const UNIVERSE = [
   "SUI-USDT","TRUMP-USDT","VIRTUAL-USDT","XRP-USDT"
 ];
 
-export function startCandleScheduler() {
-  cron.schedule("* * * * *", async () => {
-    for (const s of UNIVERSE) {
-      await fetchAndStoreCandles(s, "15m");
-    }
-  });
+async function candleLoop() {
+  for (const s of UNIVERSE) {
+    await fetchAndStoreCandles(s, "15m");
+  }
+}
 
-  console.log("Candle scheduler FI (OKX only, Lonesome only) en marxa");
+export function startCandleScheduler() {
+  cron.schedule("* * * * *", candleLoop);
+  console.log("Candle scheduler FI seqüencial en marxa");
 }
 
 startCandleScheduler();
