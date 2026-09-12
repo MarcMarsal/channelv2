@@ -147,21 +147,15 @@ export async function processSymbolFIAT(symbol, candles) {
     const accioN1  = canalsRecents.rows[1]?.accio || "";
     const accioN2  = canalsRecents.rows[2]?.accio || "";
 
+    // ALERTA PER TOT (FI)
     await generarSenyalLonesome(
       symbol,
       tsClosed,
       prevCandle,
       closedCandle,
-      canalReal,
-      {
-        mode: "DEBUG",
-        accioN,
-        accioN1,
-        accioN2,
-        canal: canalReal,
-        candles: { prevCandle, closedCandle, openCandle }
-      }
+      canalReal
     );
+
 
     // ---------------------------------------------------------
     // DETECCIÓ FI DE REINGRÉS IMMEDIAT (bot real)
