@@ -1,37 +1,23 @@
 // core/logic/fiat.js
 
-/**
- * Detecta breakout FIAT pur (sense mirar l'open)
- * c0 = canal actual (vela que acabem de tancar)
- */
-export function detectBreakout(c0, close) {
-  if (!c0 || typeof c0.upper !== "number" || typeof c0.lower !== "number") {
+// Breakout FIAT pur: només close vs canal actual
+export function detectBreakout(canalActual, close) {
+  if (!canalActual || typeof canalActual.upper !== "number" || typeof canalActual.lower !== "number") {
     return "";
   }
 
-  if (close < c0.lower) {
-    return "breakout_inferior";
-  }
-
-  if (close > c0.upper) {
-    return "breakout_superior";
-  }
-
+  if (close < canalActual.lower) return "breakout_inferior";
+  if (close > canalActual.upper) return "breakout_superior";
   return "";
 }
 
-/**
- * Detecta reingrés institucional (1–2 veles després del breakout)
- * lastChannels = [c0, c1, c2]
- * - c1 = vela anterior
- * - c2 = vela de fa dues veles
- */
+// Reingrés institucional: 1–2 veles després del breakout, canal del breakout congelat
 export function detectReingres(lastChannels, close) {
   if (!lastChannels || lastChannels.length < 2) return "";
 
+  // lastChannels ve de DB en ORDER BY timestamp DESC → [c0, c1, c2]
   const [c0, c1, c2] = lastChannels;
 
-  // Busquem breakout en -1 o -2
   let breakoutChannel = null;
   let breakoutType = "";
 
@@ -47,35 +33,29 @@ export function detectReingres(lastChannels, close) {
 
   const { upper, lower } = breakoutChannel;
 
-  // Reingrés superior → close torna per sota de l'upper del breakout
   if (breakoutType === "breakout_superior") {
-    if (typeof upper === "number" && close < upper) {
-      return "reingres_superior";
-    }
+    if (typeof upper === "number" && close < upper) return "reingres_superior";
   }
 
-  // Reingrés inferior → close torna per sobre del lower del breakout
   if (breakoutType === "breakout_inferior") {
-    if (typeof lower === "number" && close > lower) {
-      return "reingres_inferior";
-    }
+    if (typeof lower === "number" && close > lower) return "reingres_inferior";
   }
 
   return "";
 }
 
-/**
- * Funció principal que retorna l'acció FI del canal actual
- */
-export function calcularAccioFI(lastChannels, close) {
+// Funció principal: decideix acció per la vela tancada
+export function calcularAccioFI(lastChannels, closedCandle) {
   const [c0] = lastChannels || [];
   if (!c0) return "";
 
-  // 1) Breakout sobre el canal actual
+  const close = closedCandle.close;
+
+  // 1) breakout sobre canal actual
   const breakout = detectBreakout(c0, close);
   if (breakout) return breakout;
 
-  // 2) Reingrés respecte al breakout de -1 o -2
+  // 2) reingrés respecte al breakout de -1 o -2
   const reingres = detectReingres(lastChannels, close);
   if (reingres) return reingres;
 
