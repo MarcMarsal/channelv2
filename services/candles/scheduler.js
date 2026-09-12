@@ -3,7 +3,7 @@
 import cron from "node-cron";
 import { fetchAndStoreCandles } from "./fetchAndStore.js";
 
-const LONESOME_SYMBOLS = [
+const UNIVERSE = [
   "AAVE-USDT","ADA-USDT","APT-USDT","ARB-USDT","ASTER-USDT","ATOM-USDT",
   "AVAX-USDT","BCH-USDT","BNB-USDT","BTC-USDT","DOGE-USDT",
   "DOT-USDT","ENA-USDT","ETH-USDT","FET-USDT","GRAM-USDT",
@@ -15,7 +15,7 @@ const LONESOME_SYMBOLS = [
 
 export function startCandleScheduler() {
   cron.schedule("* * * * *", async () => {
-    for (const s of LONESOME_SYMBOLS) {
+    for (const s of UNIVERSE) {
       await fetchAndStoreCandles(s, "15m");
     }
   });
