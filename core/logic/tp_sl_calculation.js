@@ -1,10 +1,12 @@
-// tp_sl_calculation.js
-// Pure Lonesome TP/SL logic (correct)
+// tp_sl_calculation.js — versió final blindada
 
-export function calculateTpSl(last, atr) {
-  const { mid, upper, lower, close, accio } = last;
+export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
+  const { mid, upper, lower, close } = canal;
+  const accio = closedCandle.accio || "";
+  const atr = canal.dev; // ATR real del canal FIAT
 
-  let tp, sl;
+  let tp = null;
+  let sl = null;
 
   // REINGRÉS (CAS 2 i CAS 3)
   if (accio.startsWith("reingres")) {
