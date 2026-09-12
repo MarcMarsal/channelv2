@@ -143,34 +143,89 @@ function renderActiveSignalsTable(signals) {
         <td>${s.symbol}</td>
         <td>${s.type}</td>
 
+        <!-- Entrada + TP/SL -->
         <td>${fmt(s.entry, s.symbol)} (${fmt(s.tp, s.symbol)} / ${fmt(s.sl, s.symbol)})</td>
-
         <td>${fmt(s.tp, s.symbol)}</td>
         <td>${fmt(s.sl, s.symbol)}</td>
 
+        <!-- Resultat -->
         <td>${s.entra ? "ENTRA" : "NO ENTRA"}</td>
         <td>${s.motiu || "-"}</td>
 
+        <!-- Institucional -->
         <td>${s.cas || "-"}</td>
         <td>${s.slope_dir || "-"}</td>
         <td>${s.noise ? "sí" : "no"}</td>
         <td>${s.alerta || "-"}</td>
 
-        <td>${fmt(s.rr, s.symbol) || "-"}</td>
+        <!-- RR + Stage + Result -->
+        <td>${s.rr ? fmt(s.rr, s.symbol) : "-"}</td>
         <td>${s.stage || "-"}</td>
         <td>${s.result || "-"}</td>
 
-        <td>${fmt(s.price_exit, s.symbol) || "-"}</td>
+        <!-- Sortida -->
+        <td>${s.price_exit ? fmt(s.price_exit, s.symbol) : "-"}</td>
         <td>${s.duration_ms || "-"}</td>
 
+        <!-- Debug extra -->
         <td>${s.prev_accio || "-"}</td>
 
+        <!-- Dates -->
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
         <td>${formatSpainTime(s.created_at)}</td>
+
+        <!-- Sortida FI -->
+        <td>${s.date_exit_es || "-"}</td>
+        <td>${s.hora_exit_es || "-"}</td>
       </tr>
     `;
   }
+
+  return `
+    <h2>Alertes LonesomeTheBlue 15m (FI complet)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Symbol</th>
+          <th>Tipus</th>
+
+          <th>Entrada (TP/SL)</th>
+          <th>TP</th>
+          <th>SL</th>
+
+          <th>Resultat</th>
+          <th>Motiu</th>
+
+          <th>CAS</th>
+          <th>SlopeDir</th>
+          <th>Soroll</th>
+          <th>Alerta</th>
+
+          <th>RR</th>
+          <th>Stage</th>
+          <th>Result</th>
+
+          <th>Exit Price</th>
+          <th>Duració (ms)</th>
+
+          <th>Prev Acció</th>
+
+          <th>Data</th>
+          <th>Hora</th>
+          <th>Creat</th>
+
+          <th>Data Exit</th>
+          <th>Hora Exit</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
 
 // -------------------------------------------------------------
 // PANELL PRINCIPAL FIAT + LONESOME PUR
