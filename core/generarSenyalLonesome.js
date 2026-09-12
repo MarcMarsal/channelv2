@@ -56,24 +56,28 @@ export async function generarSenyalLonesome(
     });
   }
 
-  // 2) Acció FIAT (breakout / reingrés)
-  const prevAccio = safeStr(
-    calcularAccioFIAT(
-      prevCandle.open,
-      prevCandle.close,
-      canal.upper,
-      canal.lower
-    )
+  // -------------------------------------------------------------
+  // 2) Acció FIAT institucional (accio + breakoutAge)
+  // -------------------------------------------------------------
+  const prevRaw = calcularAccioFIAT(
+    prevCandle.open,
+    prevCandle.close,
+    canal.upper,
+    canal.lower
   );
 
-  const lastAccio = safeStr(
-    calcularAccioFIAT(
-      closedCandle.open,
-      closedCandle.close,
-      canal.upper,
-      canal.lower
-    )
+  const lastRaw = calcularAccioFIAT(
+    closedCandle.open,
+    closedCandle.close,
+    canal.upper,
+    canal.lower
   );
+
+  const prevAccio = safeStr(prevRaw.accio);
+  const lastAccio = safeStr(lastRaw.accio);
+
+  const prevBreakoutAge = prevRaw.breakoutAge ?? null;
+  const lastBreakoutAge = lastRaw.breakoutAge ?? null;
 
   // si no hi ha acció (ni breakout ni reingres) → només debug
   if (lastAccio === "") {
@@ -109,10 +113,12 @@ export async function generarSenyalLonesome(
   // 4) Soroll
   const noise = isNoise(slopeDir, canal.dev);
 
-  // 5) CAS
+  // -------------------------------------------------------------
+  // 5) CAS institucional (amb breakoutAge)
+  // -------------------------------------------------------------
   const cas = detectCas(
-    { accio: prevAccio },
-    { accio: lastAccio },
+    { accio: prevAccio, breakoutAge: prevBreakoutAge },
+    { accio: lastAccio, breakoutAge: lastBreakoutAge },
     slopeDir,
     canal.dev
   );
@@ -297,7 +303,6 @@ async function guardarSenyalDebug(data) {
     alerta || null                  // 32
   ]
 );
-
 
   return true;
 }
