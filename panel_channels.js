@@ -150,11 +150,20 @@ function renderActiveSignalsTable(signals) {
 
         <td>${s.entra ? "ENTRA" : "NO ENTRA"}</td>
         <td>${s.motiu || "-"}</td>
+
         <td>${s.cas || "-"}</td>
         <td>${s.slope_dir || "-"}</td>
         <td>${s.noise ? "sí" : "no"}</td>
-
         <td>${s.alerta || "-"}</td>
+
+        <td>${fmt(s.rr, s.symbol) || "-"}</td>
+        <td>${s.stage || "-"}</td>
+        <td>${s.result || "-"}</td>
+
+        <td>${fmt(s.price_exit, s.symbol) || "-"}</td>
+        <td>${s.duration_ms || "-"}</td>
+
+        <td>${s.prev_accio || "-"}</td>
 
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
@@ -162,35 +171,6 @@ function renderActiveSignalsTable(signals) {
       </tr>
     `;
   }
-
-  return `
-    <h2>Alertes LonesomeTheBlue 15m (només reingressos)</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Symbol</th>
-          <th>Acció</th>
-          <th>Entrada (TP/SL)</th>
-          <th>TP</th>
-          <th>SL</th>
-          <th>Resultat</th>
-          <th>Motiu</th>
-          <th>CAS</th>
-          <th>SlopeDir</th>
-          <th>Soroll</th>
-          <th>Alerta</th>
-          <th>Data</th>
-          <th>Hora</th>
-          <th>Creat</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
-  `;
-}
 
 // -------------------------------------------------------------
 // PANELL PRINCIPAL FIAT + LONESOME PUR
