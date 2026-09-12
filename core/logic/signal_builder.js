@@ -1,4 +1,4 @@
-// signal_builder.js
+// core/logic/signal_builder.js
 
 export function buildSignal({ tp, sl, alertText }) {
   return {
