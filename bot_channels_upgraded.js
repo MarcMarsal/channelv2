@@ -136,23 +136,34 @@ export async function processSymbolFIAT(symbol, candles) {
     // SUBSTITUCIÓ FIAT → LONESOME PUR
     // ---------------------------------------------------------
 
-    // Només reingrés → Lonesome pur
-    if (accio.includes("reingres")) {
+    // BREAKOUT → RAW
+if (accio.includes("breakout")) {
+  const exists = await alreadySent2(symbol, "15m", tsClosed);
+  if (!exists) {
+    await generarSenyalLonesome(
+      symbol,
+      tsClosed,
+      prevCandle,
+      closedCandle,
+      canalReal
+    );
+  }
+}
 
-      const exists = await alreadySent2(symbol, "15m", tsClosed);
-      if (!exists) {
+// REINGRÉS → EVALUATION + DISCARDED/TRADE
+if (accio.includes("reingres")) {
+  const exists = await alreadySent2(symbol, "15m", tsClosed);
+  if (!exists) {
+    await generarSenyalLonesome(
+      symbol,
+      tsClosed,
+      prevCandle,
+      closedCandle,
+      canalReal
+    );
+  }
+}
 
-        // Aquí FIAT feia generarSenyalFIAT
-        // Ara fem Lonesome pur
-        await generarSenyalLonesome(
-          symbol,
-          tsClosed,
-          prevCandle,
-          closedCandle,
-          canalReal
-        );
-      }
-    }
   }
 }
 
