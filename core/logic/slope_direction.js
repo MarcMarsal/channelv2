@@ -1,4 +1,4 @@
-// slope_direction.js
+// core/logic/slope_direction.js
 // LonesomeTheBlue slope classification (pure)
 
 export function classifySlope(slope, prevSlope) {
