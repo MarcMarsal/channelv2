@@ -1,4 +1,4 @@
-// noise_detection.js
+// core/logic/noise_detection.js
 // Pure Lonesome noise detection
 
 export function isNoise(slopeDir, dev, devThreshold = 0.0001) {
