@@ -133,49 +133,22 @@ export async function processSymbolFIAT(symbol, candles) {
     ]);
 
     // ---------------------------------------------------------
-    // ALERTES PER TOT (DEBUG COMPLET)
+    // ALERTES NOMÉS SI HI HA ACCIÓ REAL (breakout o reingrés)
     // ---------------------------------------------------------
-    const canalsRecents = await client.query(`
-      SELECT accio
-      FROM channels_fiat
-      WHERE symbol = $1
-      ORDER BY timestamp DESC
-      LIMIT 3
-    `, [symbol]);
-
-    const accioN   = canalsRecents.rows[0]?.accio || "";
-    const accioN1  = canalsRecents.rows[1]?.accio || "";
-    const accioN2  = canalsRecents.rows[2]?.accio || "";
-
-    // ALERTA PER TOT (FI)
-    await generarSenyalLonesome(
-      symbol,
-      tsClosed,
-      prevCandle,
-      closedCandle,
-      canalReal
-    );
-
-
-    // ---------------------------------------------------------
-    // DETECCIÓ FI DE REINGRÉS IMMEDIAT (bot real)
-    // ---------------------------------------------------------
-    const reingresImmediat =
-      accioN.includes("reingres") &&
-      (accioN1.includes("breakout") || accioN2.includes("breakout"));
-
-    if (reingresImmediat) {
-      const exists = await alreadySent2(symbol, "15m", tsClosed);
-      if (!exists) {
-        await generarSenyalLonesome(
-          symbol,
-          tsClosed,
-          prevCandle,
-          closedCandle,
-          canalReal
-        );
-      }
+    if (accio.includes("breakout") || accio.includes("reingres")) {
+      await generarSenyalLonesome(
+        symbol,
+        tsClosed,
+        prevCandle,
+        closedCandle,
+        canalReal
+      );
     }
+
+    // ---------------------------------------------------------
+    // IMPORTANT: ELIMINAT el bloc de reingrés immediat
+    // (duplicava alertes i generava errors UNIQUE KEY)
+    // ---------------------------------------------------------
   }
 }
 
