@@ -1,4 +1,4 @@
-// tp_sl_calculation.js — versió final blindada
+// core/logic/tp_sl_calculation.js — versió final blindada
 
 export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
   if (!canal) return { tp: null, sl: null };
