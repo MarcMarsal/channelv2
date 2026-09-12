@@ -1,4 +1,4 @@
-// fitxer cas_detection.js
+// fitxer core/logic/cas_detection.js
 
 export function detectCas(prev, last, slopeDir, dev) {
   // CAS 1 — soroll (no trend o canal estret)
