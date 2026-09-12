@@ -1,5 +1,7 @@
 // fitxer core/logic/cas_detection.js
 
+import { isNoise } from "./noise_detection.js";
+
 export function detectCas(prev, last, slopeDir, dev) {
   // CAS 1 — soroll (no trend o canal estret)
   if (isNoise(slopeDir, dev)) return 1;
