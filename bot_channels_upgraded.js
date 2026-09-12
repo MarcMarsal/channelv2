@@ -9,6 +9,9 @@ import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
 import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
 
+// 🔥 IMPORT REINGRÉS INSTITUCIONAL (3 canals)
+import { detectReingres3Canals } from "./core/reingres_3_canals.js";
+
 const ACTIVE_CRYPTOS = [
   "APT-USDT","ARB-USDT","ATOM-USDT","AVAX-USDT","BNB-USDT",
   "BTC-USDT","ETH-USDT","FET-USDT","INJ-USDT","LINK-USDT",
@@ -91,7 +94,7 @@ export async function processSymbolFIAT(symbol, candles) {
 }
 
   // -------------------------------------------------------------
-  // 2) CANAL TANCAT (FIAT) → aquí substituïm FIAT per Lonesome
+  // 2) CANAL TANCAT (FIAT) + REINGRÉS INSTITUCIONAL
   // -------------------------------------------------------------
   const existingClosed = await client.query(`
     SELECT *
@@ -111,15 +114,36 @@ export async function processSymbolFIAT(symbol, candles) {
     const canalReal = canalDB.rows[0];
     if (!canalReal) return;
 
-    // Acció FIAT (Lonesome la necessita)
-    const accio = calcularAccioFIAT(
+    // Acció FIAT original
+    const accioFIAT = calcularAccioFIAT(
       closedCandle.open,
       closedCandle.close,
       canalReal.upper,
       canalReal.lower
     );
 
-    // Actualitzar canal (igual que FIAT)
+    // ---------------------------------------------------------
+    // REINGRÉS INSTITUCIONAL (3 canals)
+    // ---------------------------------------------------------
+    const canalsRecents = await client.query(`
+      SELECT upper, lower, accio
+      FROM channels_fiat
+      WHERE symbol = $1
+      ORDER BY timestamp DESC
+      LIMIT 3
+    `, [symbol]);
+
+    const lastChannels = canalsRecents.rows;
+
+    const accioReingres = detectReingres3Canals(
+      lastChannels,
+      closedCandle.close
+    );
+
+    // Acció final (prioritza reingrés institucional)
+    const accioFinal = accioReingres !== "" ? accioReingres : accioFIAT;
+
+    // Actualitzar canal amb acció final
     await client.query(`
       UPDATE channels_fiat
       SET close   = $1,
@@ -128,14 +152,14 @@ export async function processSymbolFIAT(symbol, candles) {
       WHERE id = $3
     `, [
       closedCandle.close,
-      accio,
+      accioFinal,
       existingClosed.rows[0].id
     ]);
 
     // ---------------------------------------------------------
     // ALERTES NOMÉS SI HI HA ACCIÓ REAL (breakout o reingrés)
     // ---------------------------------------------------------
-    if (accio.includes("breakout") || accio.includes("reingres")) {
+    if (accioFinal.includes("breakout") || accioFinal.includes("reingres")) {
       await generarSenyalLonesome(
         symbol,
         tsClosed,
@@ -146,8 +170,7 @@ export async function processSymbolFIAT(symbol, candles) {
     }
 
     // ---------------------------------------------------------
-    // IMPORTANT: ELIMINAT el bloc de reingrés immediat
-    // (duplicava alertes i generava errors UNIQUE KEY)
+    // IMPORTANT: NO HI HA SEGONA CRIDA (NO DUPLICATS)
     // ---------------------------------------------------------
   }
 }
