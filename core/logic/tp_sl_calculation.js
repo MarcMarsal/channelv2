@@ -1,14 +1,22 @@
 // tp_sl_calculation.js — versió final blindada
 
 export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
-  const { mid, upper, lower, close } = canal;
+  if (!canal) return { tp: null, sl: null };
+
+  const mid = canal.mid ?? null;
+  const upper = canal.upper ?? null;
+  const lower = canal.lower ?? null;
+  const atr = canal.dev ?? 0;
+
   const accio = closedCandle.accio || "";
-  const atr = canal.dev; // ATR real del canal FIAT
+
+  if (mid == null || upper == null || lower == null) {
+    return { tp: null, sl: null };
+  }
 
   let tp = null;
   let sl = null;
 
-  // REINGRÉS (CAS 2 i CAS 3)
   if (accio.startsWith("reingres")) {
     tp = mid;
     sl = accio === "reingres_superior"
@@ -16,7 +24,6 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
       : lower - atr;
   }
 
-  // BREAKOUT
   if (accio.startsWith("breakout")) {
     tp = accio === "breakout_superior"
       ? lower
