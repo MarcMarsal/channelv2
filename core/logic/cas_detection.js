@@ -7,11 +7,11 @@ export function detectCas(prev, last, slopeDir, dev) {
   // CAS 1 — soroll (no trend o canal estret)
   if (isNoise(slopeDir, dev)) return 1;
 
-  const prevAccio = prev.accio || "";
-  const lastAccio = last.accio || "";
+  const p = (prev && typeof prev.accio === "string") ? prev.accio : "";
+  const l = (last && typeof last.accio === "string") ? last.accio : "";
 
-  const prevIsBreakout = prevAccio.startsWith("breakout");
-  const lastIsReingres = lastAccio.startsWith("reingres");
+  const prevIsBreakout = p.startsWith("breakout");
+  const lastIsReingres = l.startsWith("reingres");
 
   // CAS 2 — breakout + reingrés immediat
   if (prevIsBreakout && lastIsReingres) return 2;
