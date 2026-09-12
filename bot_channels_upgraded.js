@@ -136,8 +136,38 @@ export async function processSymbolFIAT(symbol, candles) {
     // SUBSTITUCIÓ FIAT → LONESOME PUR
     // ---------------------------------------------------------
 
-    // BREAKOUT → RAW
-if (accio.includes("breakout")) {
+// ---------------------------------------------------------
+// DETECCIÓ FI DE REINGRÉS IMMEDIAT (sense variables globals)
+// ---------------------------------------------------------
+
+// Carregar els 3 últims canals del símbol
+const canalsRecents = await client.query(`
+  SELECT accio
+  FROM channels_fiat
+  WHERE symbol = $1
+  ORDER BY timestamp DESC
+  LIMIT 3
+`, [symbol]);
+
+if (canalsRecents.rows.length < 3) return;
+
+const accioN   = canalsRecents.rows[0].accio || "";
+const accioN1  = canalsRecents.rows[1].accio || "";
+const accioN2  = canalsRecents.rows[2].accio || "";
+
+// Reingrés immediat institucional
+const reingresImmediat =
+  accioN.includes("reingres") &&
+  (accioN1.includes("breakout") || accioN2.includes("breakout"));
+
+// Reingrés tardà → descartat
+if (accioN.includes("reingres") && !reingresImmediat) {
+  // Opcional: pots fer un INSERT DISCARDED aquí
+  return;
+}
+
+// Només reingrés immediat → Lonesome PUR
+if (reingresImmediat) {
   const exists = await alreadySent2(symbol, "15m", tsClosed);
   if (!exists) {
     await generarSenyalLonesome(
@@ -150,19 +180,6 @@ if (accio.includes("breakout")) {
   }
 }
 
-// REINGRÉS → EVALUATION + DISCARDED/TRADE
-if (accio.includes("reingres")) {
-  const exists = await alreadySent2(symbol, "15m", tsClosed);
-  if (!exists) {
-    await generarSenyalLonesome(
-      symbol,
-      tsClosed,
-      prevCandle,
-      closedCandle,
-      canalReal
-    );
-  }
-}
 
   }
 }
