@@ -2,6 +2,7 @@
 
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
+
 import { formatSpainDate, formatSpainTime } from "./core/utils.js";
 import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 import { calcularAccioFI } from "./core/logic/fiat.js";
@@ -37,16 +38,18 @@ export async function processSymbolFIAT(symbol, candles) {
   const tsOpen   = openCandle.timestamp;
 
   // -------------------------------------------------------------
-  // 1) CANAL FIAT per la vela oberta (tsOpen)
+  // 1) CANAL OBERT (tsOpen) — es pot actualitzar mentre confirm=false
   // -------------------------------------------------------------
   const canalOpen = calculateChannelFIAT(candles);
 
   const existingOpen = await client.query(`
-    SELECT id FROM channels_fiat
+    SELECT id, confirm
+    FROM channels_fiat
     WHERE symbol = $1 AND timestamp = $2
   `, [symbol, tsOpen]);
 
   if (existingOpen.rows.length === 0) {
+    // crear canal obert
     await client.query(`
       INSERT INTO channels_fiat (
         symbol, slope, intercept, dev, devlen, mid,
@@ -83,28 +86,39 @@ export async function processSymbolFIAT(symbol, candles) {
       formatSpainDate(tsOpen),
       formatSpainTime(tsOpen)
     ]);
+  } else {
+    // opcional: actualitzar només close del canal obert si encara no està confirmat
+    const row = existingOpen.rows[0];
+    if (row.confirm === false) {
+      await client.query(`
+        UPDATE channels_fiat
+        SET close = $1
+        WHERE id = $2
+      `, [openCandle.close, row.id]);
+    }
   }
 
   // -------------------------------------------------------------
-  // 2) CANAL TANCAT (tsClosed) + ACCIÓ FI (breakout/reingrés)
+  // 2) CANAL TANCAT (tsClosed) — només es processa si confirm=false
   // -------------------------------------------------------------
   const existingClosed = await client.query(`
-    SELECT *
-    FROM channels_fiat
-    WHERE symbol = $1 AND timestamp = $2
-  `, [symbol, tsClosed]);
-
-  if (existingClosed.rows.length === 0) return;
-
-  const canalDB = await client.query(`
     SELECT *
     FROM channels_fiat
     WHERE symbol = $1 AND timestamp = $2
     LIMIT 1
   `, [symbol, tsClosed]);
 
-  const canalReal = canalDB.rows[0];
-  if (!canalReal) return;
+  if (existingClosed.rows.length === 0) {
+    // si no existeix canal per la vela tancada, no podem fer res
+    return;
+  }
+
+  const canalReal = existingClosed.rows[0];
+
+  // PATCH FIAT: si el canal ja està confirmat, NO es toca mai més
+  if (canalReal.confirm === true) {
+    return;
+  }
 
   // canals recents per reingrés (ordre DESC)
   const canalsRecents = await client.query(`
@@ -117,10 +131,10 @@ export async function processSymbolFIAT(symbol, candles) {
 
   const lastChannels = canalsRecents.rows;
 
-  // calcular acció FI (breakout + reingrés)
+  // calcular acció FI (breakout + reingrés) sobre la vela tancada
   const accioFinal = calcularAccioFI(lastChannels, closedCandle);
 
-  // actualitzar canal tancat amb close i acció
+  // congelar canal FIAT tancat: afegir close, acció i confirm=true
   await client.query(`
     UPDATE channels_fiat
     SET close   = $1,
@@ -133,16 +147,18 @@ export async function processSymbolFIAT(symbol, candles) {
     canalReal.id
   ]);
 
-  // ALERTES NOMÉS SI HI HA ACCIÓ REAL
+  // ALERTES NOMÉS SI HI HA ACCIÓ REAL (breakout o reingrés)
   if (accioFinal && (accioFinal.includes("breakout") || accioFinal.includes("reingres"))) {
     await generarSenyalLonesome(
       symbol,
       tsClosed,
       prevCandle,
       closedCandle,
-      { ...canalReal, accio: accioFinal }
+      { ...canalReal, accio: accioFinal, close: closedCandle.close }
     );
   }
+
+  // FI: aquest canal ja queda congelat (confirm=true) i mai més es toca
 }
 
 async function mainLoop() {
@@ -158,7 +174,7 @@ async function mainLoop() {
 
 async function startBot() {
   await initDB();
-  console.log("Bot LonesomeTheBlue PUR 15m en marxa (FI reprogramat)");
+  console.log("Bot LonesomeTheBlue PUR 15m en marxa (FIAT amb canals congelats)");
   cron.schedule("* * * * *", mainLoop);
 }
 
