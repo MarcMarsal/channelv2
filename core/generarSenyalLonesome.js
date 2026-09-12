@@ -237,84 +237,67 @@ async function guardarSenyalDebug(data) {
   const timestamp_ms = timestamp; // ja ve en ms al teu sistema
 
   await client.query(
-    `
-    INSERT INTO signals_channels (
-      symbol,
-      timeframe,
-      type,
-      color,
-      entry,
-      tp,
-      sl,
-      timestamp,
-      timestamp_ms,
-      date_es,
-      hora_es,
-      timestamp_es,
-      created_at,
-      closed,
-      slope,
-      intercept,
-      endy,
-      dev,
-      devlen,
-      mid,
-      len,
-      operable,
-      reason,
-      stage,
-      rr,
-      result,
-      timestamp_exit,
-      price_exit,
-      duration_ms,
-      date_exit_es,
-      hora_exit_es,
-      prev_accio,
-      cas,
-      alerta
-    ) VALUES (
-      $1, '15m', $2, $3,
-      $4, $5, $6,
-      $7, $8,
-      $9, $10, $11,
-      EXTRACT(EPOCH FROM NOW()) * 1000,
-      $12,
-      $13, $14, $15, $16, $17, $18, $19,
-      $20, $21, $22, $23,
-      NULL, NULL, NULL, NULL, NULL,
-      $24, $25, $26
-    )
+  `
+  INSERT INTO signals_channels (
+    symbol, timeframe, type, color,
+    entry, tp, sl,
+    timestamp, timestamp_ms,
+    date_es, hora_es, timestamp_es,
+    created_at, closed,
+    slope, intercept, endy, dev, devlen, mid, len,
+    operable, reason, stage, rr, result,
+    timestamp_exit, price_exit, duration_ms,
+    date_exit_es, hora_exit_es,
+    prev_accio, cas, alerta
+  ) VALUES (
+    $1, '15m', $2, $3,
+    $4, $5, $6,
+    $7, $8,
+    $9, $10, $11,
+    EXTRACT(EPOCH FROM NOW()) * 1000, $12,
+    $13, $14, $15, $16, $17, $18, $19,
+    $20, $21, $22, $23, $24,
+    $25, $26, $27,
+    $28, $29,
+    $30, $31, $32
+  )
   `,
-    [
-      symbol,                         // $1
-      safeStr(lastAccio) || "-",      // $2 type
-      entra ? "blue" : "yellow",      // $3 color (trade vs info)
-      entry ?? null,                  // $4
-      tp ?? null,                     // $5
-      sl ?? null,                     // $6
-      timestamp,                      // $7
-      timestamp_ms,                   // $8
-      date_es,                        // $9
-      hora_es,                        // $10
-      timestamp_es,                   // $11
-      !entra,                         // $12 closed = true si NO entra
-      canal?.slope ?? null,           // $13
-      canal?.intercept ?? null,       // $14
-      canal?.endy ?? null,            // $15
-      canal?.dev ?? null,             // $16
-      canal?.devlen ?? null,          // $17
-      canal?.mid ?? null,             // $18
-      canal?.len ?? null,             // $19
-      canal?.operable ?? true,        // $20
-      motiu ?? canal?.reason ?? null, // $21
-      null,                           // $22 stage
-      null,                           // $23 rr
-      prevAccio || null,              // $24
-      cas ?? null,                    // $25
-      alerta || null                  // $26
-    ]
-  );
+  [
+    symbol,                         // 1
+    safeStr(lastAccio) || "-",      // 2 type
+    entra ? "blue" : "yellow",      // 3 color
+    entry ?? null,                  // 4
+    tp ?? null,                     // 5
+    sl ?? null,                     // 6
+    timestamp,                      // 7
+    timestamp_ms,                   // 8
+    date_es,                        // 9
+    hora_es,                        // 10
+    timestamp_es,                   // 11
+    !entra,                         // 12 closed
+    canal?.slope ?? null,           // 13
+    canal?.intercept ?? null,       // 14
+    canal?.endy ?? null,            // 15
+    canal?.dev ?? null,             // 16
+    canal?.devlen ?? null,          // 17
+    canal?.mid ?? null,             // 18
+    canal?.len ?? null,             // 19
+    canal?.operable ?? true,        // 20
+    motiu ?? canal?.reason ?? null, // 21
+    null,                           // 22 stage
+    null,                           // 23 rr
+    null,                           // 24 result
+    null,                           // 25 timestamp_exit
+    null,                           // 26 price_exit
+    null,                           // 27 duration_ms
+    null,                           // 28 date_exit_es
+    null,                           // 29 hora_exit_es
+    prevAccio || null,              // 30
+    cas ?? null,                    // 31
+    alerta || null                  // 32
+  ]
+);
+
 
   return true;
 }
