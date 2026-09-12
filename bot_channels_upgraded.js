@@ -55,40 +55,40 @@ export async function processSymbolFIAT(symbol, candles) {
     await client.query(`
       INSERT INTO channels_fiat (
         symbol, slope, intercept, dev, devlen, mid,
-        timestamp, created_at,
-        upper, lower,
-        operable, reason,
-        open, close,
-        data_es, hora_es,
-        accio, confirm
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7,
-        EXTRACT(EPOCH FROM NOW()) * 1000,
-        $8, $9,
-        $10, $11,
-        $12, $13,
-        $14, $15,
-        '', false
-      )
-    `, [
-      symbol,
-      canalOpen.slope,
-      canalOpen.intercept,
-      canalOpen.dev,
-      canalOpen.devlen,
-      canalOpen.mid,
-      tsOpen,
-      canalOpen.upper,
-      canalOpen.lower,
-      canalOpen.operable,
-      canalOpen.reason,
-      openCandle.open,
-      openCandle.close,
-      formatSpainDate(tsOpen),
-      formatSpainTime(tsOpen)
-    ]);
-  }
+      timestamp, created_at,
+      upper, lower,
+      operable, reason,
+      open, close,
+      data_es, hora_es,
+      accio, confirm
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6,
+      $7,
+      EXTRACT(EPOCH FROM NOW()) * 1000,
+      $8, $9,
+      $10, $11,
+      $12, $13,
+      $14, $15,
+      '', false
+    )
+  `, [
+    symbol,
+    canalOpen.slope,
+    canalOpen.intercept,
+    canalOpen.dev,
+    canalOpen.devlen,
+    canalOpen.mid,
+    tsOpen,
+    canalOpen.upper,
+    canalOpen.lower,
+    canalOpen.operable,
+    canalOpen.reason,
+    openCandle.open,
+    openCandle.close,
+    formatSpainDate(tsOpen),
+    formatSpainTime(tsOpen)
+  ]);
+}
 
   // -------------------------------------------------------------
   // 2) CANAL TANCAT (FIAT) → aquí substituïm FIAT per Lonesome
@@ -133,54 +133,55 @@ export async function processSymbolFIAT(symbol, candles) {
     ]);
 
     // ---------------------------------------------------------
-    // SUBSTITUCIÓ FIAT → LONESOME PUR
+    // ALERTES PER TOT (DEBUG COMPLET)
     // ---------------------------------------------------------
+    const canalsRecents = await client.query(`
+      SELECT accio
+      FROM channels_fiat
+      WHERE symbol = $1
+      ORDER BY timestamp DESC
+      LIMIT 3
+    `, [symbol]);
 
-// ---------------------------------------------------------
-// DETECCIÓ FI DE REINGRÉS IMMEDIAT (sense variables globals)
-// ---------------------------------------------------------
+    const accioN   = canalsRecents.rows[0]?.accio || "";
+    const accioN1  = canalsRecents.rows[1]?.accio || "";
+    const accioN2  = canalsRecents.rows[2]?.accio || "";
 
-// Carregar els 3 últims canals del símbol
-const canalsRecents = await client.query(`
-  SELECT accio
-  FROM channels_fiat
-  WHERE symbol = $1
-  ORDER BY timestamp DESC
-  LIMIT 3
-`, [symbol]);
-
-if (canalsRecents.rows.length < 3) return;
-
-const accioN   = canalsRecents.rows[0].accio || "";
-const accioN1  = canalsRecents.rows[1].accio || "";
-const accioN2  = canalsRecents.rows[2].accio || "";
-
-// Reingrés immediat institucional
-const reingresImmediat =
-  accioN.includes("reingres") &&
-  (accioN1.includes("breakout") || accioN2.includes("breakout"));
-
-// Reingrés tardà → descartat
-if (accioN.includes("reingres") && !reingresImmediat) {
-  // Opcional: pots fer un INSERT DISCARDED aquí
-  return;
-}
-
-// Només reingrés immediat → Lonesome PUR
-if (reingresImmediat) {
-  const exists = await alreadySent2(symbol, "15m", tsClosed);
-  if (!exists) {
     await generarSenyalLonesome(
       symbol,
       tsClosed,
       prevCandle,
       closedCandle,
-      canalReal
+      canalReal,
+      {
+        mode: "DEBUG",
+        accioN,
+        accioN1,
+        accioN2,
+        canal: canalReal,
+        candles: { prevCandle, closedCandle, openCandle }
+      }
     );
-  }
-}
 
+    // ---------------------------------------------------------
+    // DETECCIÓ FI DE REINGRÉS IMMEDIAT (bot real)
+    // ---------------------------------------------------------
+    const reingresImmediat =
+      accioN.includes("reingres") &&
+      (accioN1.includes("breakout") || accioN2.includes("breakout"));
 
+    if (reingresImmediat) {
+      const exists = await alreadySent2(symbol, "15m", tsClosed);
+      if (!exists) {
+        await generarSenyalLonesome(
+          symbol,
+          tsClosed,
+          prevCandle,
+          closedCandle,
+          canalReal
+        );
+      }
+    }
   }
 }
 
@@ -197,7 +198,7 @@ async function mainLoop() {
 
 async function startBot() {
   await initDB();
-  console.log("Bot LonesomeTheBlue PUR 15m en marxa");
+  console.log("Bot LonesomeTheBlue PUR 15m en marxa (DEBUG ACTIVAT)");
   cron.schedule("* * * * *", mainLoop);
 }
 
