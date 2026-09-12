@@ -1,3 +1,5 @@
+// fitxer cas_detection.js
+
 export function detectCas(prev, last, slopeDir, dev) {
   // CAS 1 — soroll (no trend o canal estret)
   if (isNoise(slopeDir, dev)) return 1;
