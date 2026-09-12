@@ -172,6 +172,13 @@ export async function generarSenyalLonesome(
   const entra = shouldEnter(cas);
 
   if (!entra) {
+    let motiu = `CAS_${cas}_no_entra`;
+
+    if (canal.dev < 0.5) motiu = "canal_estret";
+    if (Math.abs(canal.slope) < 0.0001) motiu = "slope_pla";
+    if (prevAccio.includes("breakout") && lastAccio.includes("breakout"))
+      motiu = "breakout_sec";
+
     await insertSignal({
       symbol,
       type: "DISCARDED",
@@ -187,8 +194,8 @@ export async function generarSenyalLonesome(
       canal,
       cas,
       rr: null,
-      reason: `CAS_${cas}_no_entra`,
-      alerta: `CAS ${cas} → no entrada`,
+      reason: motiu,
+      alerta: `NO ENTRA: ${motiu}`,
       prevAccio
     });
     return;
