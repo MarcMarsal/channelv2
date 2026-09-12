@@ -1,6 +1,11 @@
 // core/signals/insertSignal.js
 import { client } from "../../db/client.js";
-import { safeStr } from "../utils.js";
+
+
+// safeStr local (evita errors d'import)
+function safeStr(v) {
+  return typeof v === "string" ? v : v == null ? "" : String(v);
+}
 
 export async function insertSignal({
   symbol,
