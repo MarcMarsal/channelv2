@@ -1,6 +1,5 @@
-// generarSenyalLonesome.js — LonesomeTheBlue PUR (modular senyals)
+// generarSenyalLonesome.js — LonesomeTheBlue PUR (senyals FI simplificats)
 import { formatSpainDate, formatSpainTime } from "./utils.js";
-import { calcularAccioFIAT } from "./calcularAccioFIAT.js";
 import { classifySlope } from "./logic/slope_direction.js";
 import { isNoise } from "./logic/noise_detection.js";
 import { detectCas } from "./logic/cas_detection.js";
@@ -9,10 +8,6 @@ import { calculateTpSl } from "./logic/tp_sl_calculation.js";
 import { buildAlert } from "./logic/alert_builder.js";
 import { insertSignal } from "./signals/insertSignal.js";
 
-function safeStr(v) {
-  return typeof v === "string" ? v : v == null ? "" : String(v);
-}
-
 function getSideFromAccio(accio) {
   if (!accio) return null;
   if (accio.includes("superior")) return "short";
@@ -20,9 +15,6 @@ function getSideFromAccio(accio) {
   return null;
 }
 
-// -------------------------------------------------------------
-// GENERADOR PRINCIPAL LONESOME PUR
-// -------------------------------------------------------------
 export async function generarSenyalLonesome(
   symbol,
   timestamp,
@@ -59,29 +51,10 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 1) Acció FIAT (prev + last)
-  const prevRaw = calcularAccioFIAT(
-    prevCandle.open,
-    prevCandle.close,
-    canal.upper,
-    canal.lower
-  );
-  const lastRaw = calcularAccioFIAT(
-    closedCandle.open,
-    closedCandle.close,
-    canal.upper,
-    canal.lower
-  );
-
-  const prevAccio = safeStr(prevRaw.accio);
-  const lastAccio = safeStr(lastRaw.accio);
-
-  const prevBreakoutAge = prevRaw.breakoutAge ?? null;
-  const lastBreakoutAge = lastRaw.breakoutAge ?? null;
-
+  const lastAccio = canal.accio || "";
   const side = getSideFromAccio(lastAccio);
 
-  // 1.a) Si és breakout → RAW
+  // 1) Si és breakout → només RAW (sense duplicats)
   if (lastAccio.includes("breakout")) {
     await insertSignal({
       symbol,
@@ -100,13 +73,12 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: null,
       alerta: "Breakout detectat",
-      prevAccio
+      prevAccio: null
     });
-    // no avaluem res més aquí
     return;
   }
 
-  // 1.b) Si no hi ha acció → debug simple
+  // 2) Si no hi ha acció → discard amb motiu clar
   if (lastAccio === "") {
     await insertSignal({
       symbol,
@@ -125,48 +97,27 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "accio_buida",
       alerta: "Acció buida",
-      prevAccio
+      prevAccio: null
     });
     return;
   }
 
-  // 2) Slope
+  // 3) Slope
   const { dir: slopeDir, arrow } = classifySlope(
     canal.slope,
     prevCandle.slope ?? canal.slope
   );
 
-  // 3) Soroll
+  // 4) Soroll
   const noise = isNoise(slopeDir, canal.dev);
 
-  // 4) CAS
+  // 5) CAS (simplificat: només en funció de l'acció actual)
   const cas = detectCas(
-    { accio: prevAccio, breakoutAge: prevBreakoutAge },
-    { accio: lastAccio, breakoutAge: lastBreakoutAge },
+    { accio: lastAccio, breakoutAge: null },
+    { accio: lastAccio, breakoutAge: null },
     slopeDir,
     canal.dev
   );
-
-  // 5) Avaluació inicial (EVALUATION)
-  await insertSignal({
-    symbol,
-    type: "EVALUATION",
-    stage: "reentry",
-    side,
-    entry,
-    tp: null,
-    sl: null,
-    timestamp,
-    date_es,
-    hora_es,
-    timestamp_es,
-    canal,
-    cas,
-    rr: null,
-    reason: null,
-    alerta: `Reingrés detectat, CAS ${cas}`,
-    prevAccio
-  });
 
   // 6) Decisió d’entrada
   const entra = shouldEnter(cas);
@@ -176,8 +127,6 @@ export async function generarSenyalLonesome(
 
     if (canal.dev < 0.5) motiu = "canal_estret";
     if (Math.abs(canal.slope) < 0.0001) motiu = "slope_pla";
-    if (prevAccio.includes("breakout") && lastAccio.includes("breakout"))
-      motiu = "breakout_sec";
 
     await insertSignal({
       symbol,
@@ -196,7 +145,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: motiu,
       alerta: `NO ENTRA: ${motiu}`,
-      prevAccio
+      prevAccio: null
     });
     return;
   }
@@ -222,7 +171,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "tp_sl_invalid",
       alerta: "TP/SL invalid",
-      prevAccio
+      prevAccio: null
     });
     return;
   }
@@ -234,14 +183,14 @@ export async function generarSenyalLonesome(
     arrow,
     dev: canal.dev,
     isNoise: noise,
-    prevAccio,
+    prevAccio: null,
     lastAccio,
     cas,
     tp,
     sl
   });
 
-  // 9) Senyal final TRADE
+  // 9) Senyal final TRADE (únic insert per timestamp)
   await insertSignal({
     symbol,
     type: "TRADE",
@@ -259,6 +208,6 @@ export async function generarSenyalLonesome(
     rr,
     reason: "entrada_valida",
     alerta,
-    prevAccio
+    prevAccio: null
   });
 }
