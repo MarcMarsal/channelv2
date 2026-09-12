@@ -10,7 +10,7 @@ import { calcularAccioFIAT } from "./core/calcularAccioFIAT.js";
 import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
 
 // 🔥 IMPORT REINGRÉS INSTITUCIONAL (3 canals)
-import { detectReingres3Canals } from "./core/reingres_3_canals.js";
+import { detectReingres3Canals } from "./core/logic/reingres_3_canals.js";
 
 const ACTIVE_CRYPTOS = [
   "APT-USDT","ARB-USDT","ATOM-USDT","AVAX-USDT","BNB-USDT",
