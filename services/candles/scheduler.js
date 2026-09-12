@@ -4,11 +4,13 @@ import cron from "node-cron";
 import { fetchAndStoreCandles } from "./fetchAndStore.js";
 
 const LONESOME_SYMBOLS = [
-  "BTC-USDT",
-  "ETH-USDT",
-  "INJ-USDT",
-  "LINK-USDT",
-  "NEAR-USDT"
+  "AAVE-USDT","ADA-USDT","APT-USDT","ARB-USDT","ASTER-USDT","ATOM-USDT",
+  "AVAX-USDT","BCH-USDT","BNB-USDT","BTC-USDT","DOGE-USDT",
+  "DOT-USDT","ENA-USDT","ETH-USDT","FET-USDT","GRAM-USDT",
+  "HBAR-USDT","INJ-USDT","KAITO-USDT","LINK-USDT","LTC-USDT",
+  "NEAR-USDT","ONDO-USDT","OP-USDT","PENGU-USDT",
+  "PEPE-USDT","RENDER-USDT","RON-USDT","SEI-USDT","SOL-USDT",
+  "SUI-USDT","TRUMP-USDT","VIRTUAL-USDT","XRP-USDT"
 ];
 
 export function startCandleScheduler() {
