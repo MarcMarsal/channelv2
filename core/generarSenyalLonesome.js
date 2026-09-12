@@ -1,4 +1,4 @@
-// generarSenyalLonesome.js — LonesomeTheBlue PUR (adaptat a la taula real de signals_channels)
+// generarSenyalLonesome.js — LonesomeTheBlue PUR (versió final, adaptada a signals_channels)
 
 import { client } from "../db/client.js";
 import { formatSpainDate, formatSpainTime } from "./utils.js";
@@ -10,6 +10,11 @@ import { detectCas } from "./logic/cas_detection.js";
 import { shouldEnter } from "./logic/entry_validator.js";
 import { calculateTpSl } from "./logic/tp_sl_calculation.js";
 import { buildAlert } from "./logic/alert_builder.js";
+
+// helpers seguretat
+function safeStr(v) {
+  return typeof v === "string" ? v : v == null ? "" : String(v);
+}
 
 // -------------------------------------------------------------
 // GENERADOR PRINCIPAL LONESOME PUR
@@ -24,9 +29,10 @@ export async function generarSenyalLonesome(
   const date_es = formatSpainDate(timestamp);
   const hora_es = formatSpainTime(timestamp);
   const timestamp_es = timestamp;
+  const entry = closedCandle.close;
 
   // 1) Canal operable?
-  if (!canal || !canal.operable) {
+  if (!canal || canal.operable === false) {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
@@ -41,7 +47,7 @@ export async function generarSenyalLonesome(
       noise: null,
       tp: null,
       sl: null,
-      entry: closedCandle.close,
+      entry,
       entra: false,
       motiu: "canal_no_operable",
       alerta: "Canal no operable",
@@ -51,21 +57,26 @@ export async function generarSenyalLonesome(
   }
 
   // 2) Acció FIAT (breakout / reingrés)
-  const prevAccio = calcularAccioFIAT(
-    prevCandle.open,
-    prevCandle.close,
-    canal.upper,
-    canal.lower
+  const prevAccio = safeStr(
+    calcularAccioFIAT(
+      prevCandle.open,
+      prevCandle.close,
+      canal.upper,
+      canal.lower
+    )
   );
 
-  const lastAccio = calcularAccioFIAT(
-    closedCandle.open,
-    closedCandle.close,
-    canal.upper,
-    canal.lower
+  const lastAccio = safeStr(
+    calcularAccioFIAT(
+      closedCandle.open,
+      closedCandle.close,
+      canal.upper,
+      canal.lower
+    )
   );
 
-  if (!lastAccio) {
+  // si no hi ha acció (ni breakout ni reingres) → només debug
+  if (lastAccio === "") {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
@@ -80,7 +91,7 @@ export async function generarSenyalLonesome(
       noise: null,
       tp: null,
       sl: null,
-      entry: closedCandle.close,
+      entry,
       entra: false,
       motiu: "accio_buida",
       alerta: "Acció buida",
@@ -124,7 +135,7 @@ export async function generarSenyalLonesome(
       noise,
       tp: null,
       sl: null,
-      entry: closedCandle.close,
+      entry,
       entra: false,
       motiu: `CAS_${cas}_no_entra`,
       alerta: `CAS ${cas} → no entrada`,
@@ -136,7 +147,7 @@ export async function generarSenyalLonesome(
   // 7) TP/SL Lonesome
   const { tp, sl } = calculateTpSl(cas, closedCandle, slopeDir);
 
-  if (!tp || !sl) {
+  if (tp == null || sl == null) {
     return await guardarSenyalDebug({
       symbol,
       timestamp,
@@ -151,7 +162,7 @@ export async function generarSenyalLonesome(
       noise,
       tp: null,
       sl: null,
-      entry: closedCandle.close,
+      entry,
       entra: false,
       motiu: "tp_sl_invalid",
       alerta: "TP/SL invalid",
@@ -175,8 +186,6 @@ export async function generarSenyalLonesome(
   });
 
   // 9) Senyal final (trade)
-  const entry = closedCandle.close;
-
   return await guardarSenyalDebug({
     symbol,
     timestamp,
@@ -278,32 +287,32 @@ async function guardarSenyalDebug(data) {
     )
   `,
     [
-      symbol,                 // $1
-      lastAccio || "-",       // $2 type
-      entra ? "blue" : "yellow", // $3 color (trade vs info)
-      entry,                  // $4
-      tp,                     // $5
-      sl,                     // $6
-      timestamp,              // $7
-      timestamp_ms,           // $8
-      date_es,                // $9
-      hora_es,                // $10
-      timestamp_es,           // $11
-      !entra,                 // $12 closed = true si NO entra
-      canal?.slope ?? null,   // $13
-      canal?.intercept ?? null, // $14
-      canal?.endy ?? null,    // $15
-      canal?.dev ?? null,     // $16
-      canal?.devlen ?? null,  // $17
-      canal?.mid ?? null,     // $18
-      canal?.len ?? null,     // $19
-      canal?.operable ?? true,// $20
-      canal?.reason ?? null,  // $21
-      null,                   // $22 stage
-      null,                   // $23 rr
-      prevAccio || null,      // $24
-      cas || null,            // $25
-      alerta || null          // $26
+      symbol,                         // $1
+      safeStr(lastAccio) || "-",      // $2 type
+      entra ? "blue" : "yellow",      // $3 color (trade vs info)
+      entry ?? null,                  // $4
+      tp ?? null,                     // $5
+      sl ?? null,                     // $6
+      timestamp,                      // $7
+      timestamp_ms,                   // $8
+      date_es,                        // $9
+      hora_es,                        // $10
+      timestamp_es,                   // $11
+      !entra,                         // $12 closed = true si NO entra
+      canal?.slope ?? null,           // $13
+      canal?.intercept ?? null,       // $14
+      canal?.endy ?? null,            // $15
+      canal?.dev ?? null,             // $16
+      canal?.devlen ?? null,          // $17
+      canal?.mid ?? null,             // $18
+      canal?.len ?? null,             // $19
+      canal?.operable ?? true,        // $20
+      motiu ?? canal?.reason ?? null, // $21
+      null,                           // $22 stage
+      null,                           // $23 rr
+      prevAccio || null,              // $24
+      cas ?? null,                    // $25
+      alerta || null                  // $26
     ]
   );
 
