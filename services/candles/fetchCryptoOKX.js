@@ -24,7 +24,9 @@ function toInternal(ts, o, h, l, c, v, confirm) {
   };
 }
 
-export async function fetchCryptoOKX(symbol, timeframe = "15m", limit = 200) {
+//export async function fetchCryptoOKX(symbol, timeframe = "15m", limit = 200) {
+export async function fetchCryptoOKX(symbol, timeframe = "15m", limit = 4) {
+
   try {
     const url = `${API_OKX}?instId=${symbol}&bar=${timeframe}&limit=${limit}`;
     const res = await axios.get(url);
