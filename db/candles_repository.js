@@ -27,11 +27,10 @@ import { pool } from './postgres_pool.js';
 //}
 
 export async function getCandlesSince(symbol, sinceTimestamp) {
-    console.log("--------------------------------------------------");
-    console.log("[DEBUG] getCandlesSince() INPUT:");
-    console.log("symbol:", symbol);
-    console.log("sinceTimestamp:", sinceTimestamp);
-    console.log("sinceTimestamp ISO:", new Date(sinceTimestamp).toISOString());
+    // Logs FIAT PUR → una sola línia cadascun
+    console.log("[DEBUG getCandlesSince] symbol:", symbol, 
+                " sinceTimestamp:", sinceTimestamp, 
+                " sinceISO:", new Date(sinceTimestamp).toISOString());
 
     const query = `
         SELECT *
@@ -41,15 +40,18 @@ export async function getCandlesSince(symbol, sinceTimestamp) {
         ORDER BY timestamp ASC
     `;
 
-    console.log("[DEBUG] SQL QUERY:", query);
-    console.log("[DEBUG] SQL PARAMS:", [symbol, sinceTimestamp]);
+    // Query en UNA sola línia → Railway no la pot trencar
+    console.log("[DEBUG QUERY]:", query.replace(/\s+/g, " "));
 
-    const result = await pool.query(query, [symbol, sinceTimestamp]);
+    // Paràmetres en UNA sola línia → Railway no els pot trencar
+    const params = [symbol, sinceTimestamp];
+    console.log("[DEBUG PARAMS]:", JSON.stringify(params));
 
-    console.log("[DEBUG] SQL RESULT ROWS:", result.rows);
-    console.log("--------------------------------------------------");
+    const result = await pool.query(query, params);
+
+    // Resultat en UNA sola línia → Railway no el pot trencar
+    console.log("[DEBUG RESULT ROWS]:", JSON.stringify(result.rows));
 
     return result.rows;
 }
-
 
