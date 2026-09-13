@@ -134,34 +134,14 @@ function renderActiveSignalsTable(signals) {
   let rows = "";
 
   for (const s of signals) {
-
-    const color =
-      s.alerta?.includes("Breakout") ? "#0f0" :
-      s.alerta?.includes("NO ENTRA") ? "orange" :
-      "cyan";
-
     rows += `
-      <tr style="color:${color}">
+      <tr>
         <td>${s.id}</td>
         <td>${s.symbol}</td>
-
-        <!-- Tipus FIAT PUR -->
-        <td>${s.alerta?.includes("Breakout") ? "BREAKOUT" :
-             s.alerta?.includes("NO ENTRA") ? "DISCARDED" :
-             "INFO"}</td>
-
-        <!-- Entrada + TP/SL -->
-        <td>${fmt(s.entry, s.symbol)} (${fmt(s.tp, s.symbol)} / ${fmt(s.sl, s.symbol)})</td>
-        <td>${fmt(s.tp, s.symbol)}</td>
-        <td>${fmt(s.sl, s.symbol)}</td>
-
-        <!-- Motiu FIAT PUR -->
-        <td>${s.reason || "-"}</td>
-
-        <!-- ALERTA FIAT PUR (disparador complet) -->
-        <td style="color:#ff0">${s.alerta || "-"}</td>
-
-        <!-- Dates -->
+        <td>${fmt(s.entry, s.symbol)}</td>
+        <td>${s.tp != null ? fmt(s.tp, s.symbol) : "-"}</td>
+        <td>${s.sl != null ? fmt(s.sl, s.symbol) : "-"}</td>
+        <td>${s.alerta || "-"}</td>
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
       </tr>
@@ -169,17 +149,15 @@ function renderActiveSignalsTable(signals) {
   }
 
   return `
-    <h2>Alertes LonesomeTheBlue 15m (FI PUR)</h2>
+    <h2>Alertes LonesomeTheBlue 15m (signals_channels)</h2>
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Symbol</th>
-          <th>Tipus</th>
-          <th>Entrada (TP/SL)</th>
+          <th>Entrada</th>
           <th>TP</th>
           <th>SL</th>
-          <th>Motiu</th>
           <th>Alerta</th>
           <th>Data</th>
           <th>Hora</th>
@@ -191,6 +169,7 @@ function renderActiveSignalsTable(signals) {
     </table>
   `;
 }
+
 
 
 
