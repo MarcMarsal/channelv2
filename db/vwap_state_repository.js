@@ -3,12 +3,19 @@
 // Accedeix a la taula `vwap_state` → carrega estat del dia → crea estat buit → guarda estat actualitzat.
 // Fitxer de base de dades FIAT PUR, sense lògica VWAP.
 
+// db/vwap_state_repository.js
+// Estat VWAP FIAT PUR → JS usa UNIX ms, PostgreSQL rep YYYY-MM-DD
+
 import { pool } from './postgres_pool.js';
 
 /**
  * Retorna l’estat del dia per un símbol i data UTC.
+ * IMPORTANT: dateUtc ha de ser YYYY-MM-DD per PostgreSQL.
  */
-export async function getStateForDay(symbol, dateUtc) {
+export async function getStateForDay(symbol, dateUtcMs) {
+    // Convertim UNIX ms → YYYY-MM-DD
+    const dateUtcSql = new Date(dateUtcMs).toISOString().slice(0, 10);
+
     const query = `
         SELECT *
         FROM vwap_state
@@ -16,17 +23,18 @@ export async function getStateForDay(symbol, dateUtc) {
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [symbol, dateUtc]);
+    const result = await pool.query(query, [symbol, dateUtcSql]);
     return result.rows[0] || null;
 }
 
 /**
  * Crea un estat buit per un nou dia.
+ * Aquí mantenim UNIX ms (FIAT PUR per JS).
  */
-export function createEmptyState(symbol, dateUtc) {
+export function createEmptyState(symbol, dateUtcMs) {
     return {
         symbol,
-        date_utc: dateUtc,
+        date_utc: dateUtcMs,   // UNIX ms dins JS
         sum_pv: 0,
         sum_v: 0,
         sigma: 0,
@@ -38,8 +46,13 @@ export function createEmptyState(symbol, dateUtc) {
 
 /**
  * Guarda l’estat actualitzat a PostgreSQL.
+ * Convertim UNIX ms → YYYY-MM-DD just abans de guardar.
  */
 export async function saveState(symbol, state, vwapValue, sigmaValue) {
+
+    // FIAT PUR: convertir UNIX ms → YYYY-MM-DD per PostgreSQL
+    const dateUtcSql = new Date(state.date_utc).toISOString().slice(0, 10);
+
     const query = `
         INSERT INTO vwap_state (
             symbol, date_utc, sum_pv, sum_v, sigma, vwap, candles_processed, updated_at
@@ -57,7 +70,7 @@ export async function saveState(symbol, state, vwapValue, sigmaValue) {
 
     await pool.query(query, [
         symbol,
-        state.date_utc,
+        dateUtcSql,                 // <-- FIAT PUR per PostgreSQL
         state.sum_pv,
         state.sum_v,
         sigmaValue,
