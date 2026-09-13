@@ -3,11 +3,10 @@
 // Llegeix veles de la taula `candles` → filtra per símbol i timeframe = '15m' → retorna veles ordenades per timestamp.
 // Fitxer de base de dades FIAT PUR, sense lògica VWAP.
 
+// db/candles_repository.js
+
 import { pool } from './postgres_pool.js';
 
-/**
- * Retorna totes les veles 15m d’un símbol des d’un timestamp concret.
- */
 export async function getCandlesSince(symbol, sinceTimestamp) {
     const query = `
         SELECT symbol, timeframe, open, high, low, close, volume, timestamp
@@ -19,5 +18,11 @@ export async function getCandlesSince(symbol, sinceTimestamp) {
     `;
 
     const result = await pool.query(query, [symbol, sinceTimestamp]);
-    return result.rows;
+
+    // FIAT PUR: convertir timestamp string → number
+    return result.rows.map(row => ({
+        ...row,
+        timestamp: Number(row.timestamp)
+    }));
 }
+
