@@ -8,6 +8,7 @@ import { shouldEnter } from "./logic/entry_validator.js";
 import { calculateTpSl } from "./logic/tp_sl_calculation.js";
 import { buildAlert } from "./logic/alert_builder.js";
 import { insertSignal } from "./signals/insertSignal.js";
+import { fmt } from "./decimals.js";
 
 function getSideFromAccio(accio) {
   if (!accio) return null;
@@ -63,7 +64,9 @@ export async function generarSenyalLonesome(
   // 1) BREAKOUT FIAT PUR
   // -------------------------------------------------------------
   if (lastAccio.includes("breakout")) {
-    const alerta = `Breakout detectat (close=${entry}, canal=[${canal.lower}, ${canal.upper}])`;
+    //  const alerta = `Breakout detectat (close=${entry}, canal=[${canal.lower}, ${canal.upper}])`;
+  
+    const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, canal=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
     await insertSignal({
       symbol,
