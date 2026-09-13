@@ -24,6 +24,20 @@ export async function runVWAPForSymbol(symbol, sinceTimestamp) {
 
         // 2) Processar cada vela
         for (const candle of candles) {
+            console.log("[VWAP CANDLE RAW]", {
+                  symbol: candle.symbol,
+                  timestamp: candle.timestamp,
+                  open: candle.open,
+                  high: candle.high,
+                  low: candle.low,
+                  close: candle.close,
+                  volume: candle.volume
+                  });
+            if (candle.timestamp === undefined || Number.isNaN(candle.timestamp)) {
+               console.error("[VWAP ERROR] Candle timestamp is INVALID:", candle);
+               }
+
+
             await processCandle(candle);
         }
 
