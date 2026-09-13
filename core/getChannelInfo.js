@@ -14,6 +14,7 @@ export async function getActiveSignals() {
       entry,
       tp,
       sl,
+      alerta,
       timestamp,
       date_es,
       hora_es,
@@ -25,6 +26,7 @@ export async function getActiveSignals() {
 
   return q.rows;
 }
+
 
 // -------------------------------------------------------------
 // LLEGIR ÚLTIMS CANALS FIAT 15m (últims 6 per symbol)
