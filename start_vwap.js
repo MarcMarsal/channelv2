@@ -20,4 +20,5 @@ async function startBot() {
   cron.schedule("* * * * *", mainLoop);   // FIAT PUR
 }
 
-startBot();
+//startBot();
+mainloop();
