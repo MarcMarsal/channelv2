@@ -1,6 +1,8 @@
 // core/logic/fiat.js — FIAT PUR breakout + reingrés
 
+// -------------------------------------------------------------
 // BREAKOUT FIAT PUR
+// -------------------------------------------------------------
 export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, close) {
   if (!canalActual || !canalAnterior) return "";
 
@@ -24,7 +26,9 @@ export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, clos
 }
 
 
+// -------------------------------------------------------------
 // REINGRÉS FIAT PUR
+// -------------------------------------------------------------
 export function detectarReingresFIAT(canalCongelat, prevClose, close) {
   if (!canalCongelat) return "";
 
@@ -45,7 +49,9 @@ export function detectarReingresFIAT(canalCongelat, prevClose, close) {
 }
 
 
+// -------------------------------------------------------------
 // Funció principal FIAT PUR
+// -------------------------------------------------------------
 export function calcularAccioFI(lastChannels, closedCandle) {
   if (!lastChannels || lastChannels.length < 2) return "";
 
@@ -60,11 +66,18 @@ export function calcularAccioFI(lastChannels, closedCandle) {
     return breakout;   // el bot congelarà c0 com a canal del breakout
   }
 
-  // 2) REINGRÉS FIAT PUR (canal congelat = c1 si c1 va ser breakout)
+  // -------------------------------------------------------------
+  // 2) REINGRÉS FIAT PUR
+  // Buscar breakout en els últims 3 canals confirmats
+  // (breakout → vela post-breakout → reingrés)
+  // -------------------------------------------------------------
   let canalCongelat = null;
 
-  if (c1?.accio?.includes("breakout")) {
-    canalCongelat = c1;
+  for (const ch of lastChannels.slice(0, 3)) {
+    if (ch?.accio?.includes("breakout")) {
+      canalCongelat = ch;
+      break;
+    }
   }
 
   if (!canalCongelat) return "";
