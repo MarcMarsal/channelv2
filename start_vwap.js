@@ -2,14 +2,16 @@
 import cron from "node-cron";
 import { runVWAPForSymbol } from './services/vwap/vwap_runner.js';
 
-const SINCE = Date.now();
+//const SINCE = Date.now();
+const SINCE = 0;
 
 const ACTIVE_CRYPTOS = [
   // Bones
-  "BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","INJ-USDT",
+  "BTC-USDT"
+  //"BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","INJ-USDT",
 
   // Mitjanes
-  "NEAR-USDT","APT-USDT","SUI-USDT","SEI-USDT","LINK-USDT","ATOM-USDT","ARB-USDT","OP-USDT"
+  //"NEAR-USDT","APT-USDT","SUI-USDT","SEI-USDT","LINK-USDT","ATOM-USDT","ARB-USDT","OP-USDT"
 ];
 
 
