@@ -11,10 +11,11 @@
  * - entry_price: TP
  * - entry_timestamp
  */
-export function detectEntry(conditions, tp, timestamp) {
+export function detectEntry(conditions, tp, vwapValue, timestamp) {
+
     // 1) REVERSIÓ
     if (conditions.rev_valid) {
-        const direction = tp < conditions.vwapValue ? "long" : "short";
+        const direction = tp < vwapValue ? "long" : "short";
         return {
             entry_type: "reversal",
             entry_direction: direction,
@@ -25,7 +26,7 @@ export function detectEntry(conditions, tp, timestamp) {
 
     // 2) BREAKOUT
     if (conditions.bo_valid) {
-        const direction = tp > conditions.vwapValue ? "long" : "short";
+        const direction = tp > vwapValue ? "long" : "short";
         return {
             entry_type: "breakout",
             entry_direction: direction,
@@ -36,7 +37,7 @@ export function detectEntry(conditions, tp, timestamp) {
 
     // 3) RETEST
     if (conditions.rt_valid) {
-        const direction = tp > conditions.vwapValue ? "long" : "short";
+        const direction = tp > vwapValue ? "long" : "short";
         return {
             entry_type: "retest",
             entry_direction: direction,
