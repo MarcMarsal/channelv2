@@ -141,7 +141,16 @@ function renderActiveSignalsTable(signals) {
       <tr style="color:${color}">
         <td>${s.id}</td>
         <td>${s.symbol}</td>
-        <td>${s.type}</td>
+
+        <!-- Tipus FIAT PUR -->
+        <td style="color:${
+          s.type === "BREAKOUT" ? "#0f0" :
+          s.type === "REINGRES" ? "#0ff" :
+          s.type === "DISCARDED" ? "orange" :
+          "white"
+        }">
+          ${s.type}
+        </td>
 
         <!-- Entrada + TP/SL -->
         <td>${fmt(s.entry, s.symbol)} (${fmt(s.tp, s.symbol)} / ${fmt(s.sl, s.symbol)})</td>
@@ -150,13 +159,17 @@ function renderActiveSignalsTable(signals) {
 
         <!-- Resultat -->
         <td>${s.entra ? "ENTRA" : "NO ENTRA"}</td>
-        <td>${s.motiu || "-"}</td>
+
+        <!-- Motiu FIAT PUR -->
+        <td style="color:#0ff">${s.reason || s.motiu || "-"}</td>
 
         <!-- Institucional -->
         <td>${s.cas || "-"}</td>
         <td>${s.slope_dir || "-"}</td>
         <td>${s.noise ? "sí" : "no"}</td>
-        <td>${s.alerta || "-"}</td>
+
+        <!-- ALERTA FIAT PUR (disparador complet) -->
+        <td style="color:#ff0">${s.alerta || "-"}</td>
 
         <!-- RR + Stage + Result -->
         <td>${s.rr ? fmt(s.rr, s.symbol) : "-"}</td>
@@ -226,6 +239,7 @@ function renderActiveSignalsTable(signals) {
     </table>
   `;
 }
+
 
 // -------------------------------------------------------------
 // PANELL PRINCIPAL FIAT + LONESOME PUR
