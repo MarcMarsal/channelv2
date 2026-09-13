@@ -172,7 +172,6 @@ function renderActiveSignalsTable(signals) {
 
 
 
-
 // -------------------------------------------------------------
 // PANELL PRINCIPAL FIAT + LONESOME PUR
 // -------------------------------------------------------------
