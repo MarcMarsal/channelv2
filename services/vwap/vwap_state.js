@@ -22,25 +22,36 @@ function dayStartUtc(timestamp) {
  * Si no existeix → crea estat buit.
  */
 export async function loadState(symbol, timestamp) {
-    const dateUtc = new Date(timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
+    // Dia actual en format YYYY-MM-DD
+    const dateUtc = new Date(timestamp).toISOString().slice(0, 10);
 
+    // Estat existent del dia (si existeix)
     const existing = await getStateForDay(symbol, dateUtc);
 
     if (existing) {
-        // FIAT PUR: convertir date_utc correctament segons el tipus
+
+        // 🔥 FIAT PUR: si l’estat és d’un altre dia → RESET
+        // Això evita que updated_at quedi desfasat i bloquegi el VWAP
+        if (existing.date_utc !== dateUtc) {
+            return createEmptyState(symbol, dateUtc);
+        }
+
+        // 🔥 FIAT PUR: convertir date_utc correctament
         if (typeof existing.date_utc === "string") {
-            // Format SQL: "2026-09-13"
             const d = new Date(existing.date_utc + "T00:00:00Z");
             existing.date_utc = d.getTime();
-        } else if (typeof existing.date_utc === "number") {
-            // Ja és UNIX ms → deixar-ho tal qual
-        } else {
+        } else if (typeof existing.date_utc !== "number") {
             // Valor inesperat → reiniciar estat del dia
             existing.date_utc = Date.now();
         }
 
         return existing;
     }
+
+    // 🔥 Si no existeix estat → crear estat buit del dia actual
+    return createEmptyState(symbol, dateUtc);
+}
+
 
     // Si no existeix, crear estat buit
     return createEmptyState(symbol, dateUtc);
