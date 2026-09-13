@@ -1,23 +1,16 @@
-
 import cron from "node-cron";
 import { runVWAPForSymbol } from './services/vwap/vwap_runner.js';
 
-//const SINCE = Date.now();
-const SINCE = 0;
+// FIAT PUR: SINCE = null → el runner decidirà SINCE
+const SINCE = null;
 
 const ACTIVE_CRYPTOS = [
-  // Bones
   "BTC-USDT"
-  //"BTC-USDT","ETH-USDT","BNB-USDT","SOL-USDT","AVAX-USDT","INJ-USDT",
-
-  // Mitjanes
-  //"NEAR-USDT","APT-USDT","SUI-USDT","SEI-USDT","LINK-USDT","ATOM-USDT","ARB-USDT","OP-USDT"
 ];
-
 
 async function mainLoop() {
   for (const symbol of ACTIVE_CRYPTOS) {
-    console.log(`[VWAP START] Processant ${symbol} des de ${new Date(SINCE).toISOString()}`);
+    console.log(`[VWAP START] Processant ${symbol}`);
     await runVWAPForSymbol(symbol, SINCE);
   }
 }
@@ -28,4 +21,3 @@ async function startBot() {
 }
 
 startBot();
-
