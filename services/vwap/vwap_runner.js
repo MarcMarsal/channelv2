@@ -1,74 +1,52 @@
 // services/vwap/vwap_runner.js
-// Descripció:
-// Llegeix veles → processa cada vela amb vwap_service → actualitza estat → guarda debug → registra logs.
-// És el cron job que manté el sistema VWAP en funcionament.
+// Flux institucional FIAT PUR:
+// - Carrega estat del dia actual
+// - Llegeix l’última vela tancada (confirm = true)
+// - Si el timestamp ha canviat → processa la vela
+// - Guarda estat
+// - Si no ha canviat → no fa res
 
-import { processCandle } from './vwap_service.js';
-import { getCandlesSince } from '../../db/candles_repository.js';
-import { loadState } from './vwap_state.js';
-import { logInfo, logError } from '../../utils/logger.js';
+import { getLastClosedCandle } from '../../db/candles_repository.js';
+import { loadState, saveState } from '../../db/vwap_state_repository.js';
+import { processCandle } from './vwap_processor.js';
 
-/**
- * Executa el procés VWAP per un símbol concret.
- */
-export async function runVWAPForSymbol(symbol, sinceTimestamp) {
+export async function runVWAPForSymbol(symbol) {
     try {
-        logInfo(`VWAP RUNNER → Iniciant processament per ${symbol}`);
+        console.log(`[VWAP RUNNER] Iniciant per ${symbol}`);
 
-        // 🟩 FIAT PUR: Determinar SINCE
-        let since = sinceTimestamp;
+        // 🔥 FIAT PUR: data UTC del dia actual (YYYY-MM-DD)
+        const now = new Date();
+        const dateUtc = now.toISOString().split("T")[0];
 
-        if (since === null) {
-            const state = await loadState(symbol, Date.now());
+        // 🔥 Carregar estat del dia
+        let state = await loadState(symbol, dateUtc);
 
-            if (state) {
-                since = state.updated_at;   // només veles noves
-                console.log(`[VWAP SINCE] Usant updated_at = ${new Date(since).toISOString()}`);
-            } else {
-                since = Date.now() - 24 * 60 * 60 * 1000; // últimes 24h
-                console.log(`[VWAP SINCE] No hi ha estat → últimes 24h`);
-            }
-        }
+        // 🔥 Obtenir l’última vela tancada
+        const lastClosedCandle = await getLastClosedCandle(symbol);
 
-        // 1) Obtenir veles noves
-        const candles = await getCandlesSince(symbol, since);
-
-        if (!candles.length) {
-            logInfo(`VWAP RUNNER → No hi ha veles noves per ${symbol}`);
+        if (!lastClosedCandle) {
+            console.log("[VWAP RUNNER] No hi ha cap vela tancada");
             return;
         }
 
-        // 2) Processar cada vela
-        for (const candle of candles) {
-            console.log("[VWAP CANDLE RAW]", {
-                symbol: candle.symbol,
-                timestamp: candle.timestamp,
-                open: candle.open,
-                high: candle.high,
-                low: candle.low,
-                close: candle.close,
-                volume: candle.volume
-            });
+        console.log("[VWAP RUNNER] Última vela tancada:", lastClosedCandle.timestamp);
 
-            if (candle.timestamp === undefined || Number.isNaN(candle.timestamp)) {
-                console.error("[VWAP ERROR] Candle timestamp is INVALID:", candle);
-            }
-
-            await processCandle(candle);
+        // 🔥 FIAT PUR: només processar si el timestamp ha canviat
+        if (state.updated_at === lastClosedCandle.timestamp) {
+            console.log("[VWAP RUNNER] No hi ha nova vela tancada");
+            return;
         }
 
-        logInfo(`VWAP RUNNER → Processament complet per ${symbol} (${candles.length} veles)`);
+        // 🔥 Processar la nova vela tancada
+        const { newState, vwap, sigma } = processCandle(state, lastClosedCandle);
+
+        // 🔥 Guardar estat actualitzat
+        await saveState(symbol, newState, vwap, sigma);
+
+        console.log("[VWAP RUNNER] Vela processada:", lastClosedCandle.timestamp);
+        console.log("[VWAP RUNNER] VWAP:", vwap, "Sigma:", sigma);
 
     } catch (err) {
-        logError(`VWAP RUNNER ERROR → ${err.message}`);
-    }
-}
-
-/**
- * Executa el procés VWAP per múltiples símbols.
- */
-export async function runVWAPForSymbols(symbols, sinceTimestamp) {
-    for (const symbol of symbols) {
-        await runVWAPForSymbol(symbol, sinceTimestamp);
+        console.error("[VWAP RUNNER ERROR]", err);
     }
 }
