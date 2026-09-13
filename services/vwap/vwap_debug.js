@@ -68,7 +68,7 @@ export function buildDebugRow({
         entry_price: entry.entry_price,
         entry_timestamp: entry.entry_timestamp,
 
-        // Timestamp de creació
-        created_at: Date.now()
+        // Timestamp de creació FIAT PUR → timestamp de la vela tancada
+        created_at: timestamp
     };
 }
