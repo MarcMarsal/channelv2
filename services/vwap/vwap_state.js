@@ -1,33 +1,42 @@
 // services/vwap/vwap_state.js
-// Descripció:
-// Gestiona l’estat del dia → carrega estat → reinicia si és un nou dia → actualitza sumPV i sumV → incrementa candles_processades → retorna estat actualitzat.
+// Estat VWAP FIAT PUR → sense strings de dates → tot en UNIX ms
 
 import { getStateForDay, createEmptyState, saveState } from '../../db/vwap_state_repository.js';
 import { isNewUtcDay } from '../../utils/time.js';
 
 /**
+ * Converteix un timestamp a l’inici del dia UTC (UNIX ms)
+ */
+function dayStartUtc(timestamp) {
+    const d = new Date(timestamp);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.getTime(); // número FIAT PUR
+}
+
+/**
  * Carrega l’estat del dia per un símbol i timestamp.
  */
 export async function loadState(symbol, timestamp) {
-    const dateUtc = new Date(timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
+    const dayUtc = dayStartUtc(timestamp);
 
-    const existing = await getStateForDay(symbol, dateUtc);
+    const existing = await getStateForDay(symbol, dayUtc);
     if (existing) return existing;
 
-    // Si no existeix, crear estat buit
-    return createEmptyState(symbol, dateUtc);
+    // Estat buit FIAT PUR
+    return createEmptyState(symbol, dayUtc);
 }
 
 /**
  * Reinicia l’estat si ha canviat el dia UTC.
  */
 export function resetIfNewDay(state, timestamp) {
-    if (!isNewUtcDay(state.date_utc, timestamp)) return state;
+    const dayUtc = dayStartUtc(timestamp);
 
-    // Reiniciar estat del dia
+    if (!isNewUtcDay(state.date_utc, dayUtc)) return state;
+
     return {
         symbol: state.symbol,
-        date_utc: new Date(timestamp).toISOString().slice(0, 10),
+        date_utc: dayUtc,
         sum_pv: 0,
         sum_v: 0,
         sigma: 0,
