@@ -1,73 +1,77 @@
-// core/logic/fiat.js
+// core/logic/fiat.js — FIAT PUR breakout + reingrés
 
-// Breakout FIAT pur: només close vs canal actual
-export function detectBreakout(canalActual, close) {
-  if (!canalActual || typeof canalActual.upper !== "number" || typeof canalActual.lower !== "number") {
-    return "";
+// BREAKOUT FIAT PUR
+// close_actual vs canal_actual + close_anterior vs canal_anterior
+export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, close) {
+  if (!canalActual || !canalAnterior) return "";
+
+  const ua  = canalActual.upper;
+  const la  = canalActual.lower;
+
+  const uaP = canalAnterior.upper;
+  const laP = canalAnterior.lower;
+
+  // Breakout superior
+  if (close > ua && prevClose <= uaP) {
+    return "breakout_superior";
   }
 
-  if (close < canalActual.lower) return "breakout_inferior";
-  if (close > canalActual.upper) return "breakout_superior";
+  // Breakout inferior
+  if (close < la && prevClose >= laP) {
+    return "breakout_inferior";
+  }
+
   return "";
 }
 
-// Reingrés institucional: 1–2 veles després del breakout, canal del breakout congelat
-export function detectReingres(lastChannels, close) {
+
+// REINGRÉS FIAT PUR
+// close vs close respecte al canal CONGELAT del breakout
+export function detectarReingresFIAT(canalCongelat, prevClose, close) {
+  if (!canalCongelat) return "";
+
+  const uc = canalCongelat.upper;
+  const lc = canalCongelat.lower;
+
+  // Reingrés superior
+  if (prevClose > uc && close <= uc) {
+    return "reingres_superior";
+  }
+
+  // Reingrés inferior
+  if (prevClose < lc && close >= lc) {
+    return "reingres_inferior";
+  }
+
+  return "";
+}
+
+
+// Funció principal FIAT PUR
+export function calcularAccioFI(lastChannels, closedCandle) {
   if (!lastChannels || lastChannels.length < 2) return "";
 
-  // lastChannels ve de DB en ORDER BY timestamp DESC → [c0, c1, c2]
-  const [c0, c1, c2] = lastChannels;
+  const [c0, c1] = lastChannels;   // c0 = canal actual, c1 = canal anterior
 
-  let breakoutChannel = null;
-  let breakoutType = "";
+  const close     = closedCandle.close;
+  const prevClose = closedCandle.prev_close;
+
+  // 1) BREAKOUT FIAT PUR
+  const breakout = detectarBreakoutFIAT(c0, c1, prevClose, close);
+  if (breakout) {
+    return breakout;   // el bot congelarà c0 com a canal del breakout
+  }
+
+  // 2) REINGRÉS FIAT PUR (canal congelat = c1 si c1 va ser breakout)
+  let canalCongelat = null;
 
   if (c1?.accio?.includes("breakout")) {
-    breakoutChannel = c1;
-    breakoutType = c1.accio;
-  } else if (c2?.accio?.includes("breakout")) {
-    breakoutChannel = c2;
-    breakoutType = c2.accio;
+    canalCongelat = c1;
   }
 
-  if (!breakoutChannel) return "";
+  if (!canalCongelat) return "";
 
-  const { upper, lower } = breakoutChannel;
-
-  if (breakoutType === "breakout_superior") {
-    if (close < upper) return "reingres_superior";
-  }
-
-  if (breakoutType === "breakout_inferior") {
-    if (close > lower) return "reingres_inferior";
-  }
-
-  return "";
-}
-
-// Funció principal: decideix acció per la vela tancada
-export function calcularAccioFI(lastChannels, closedCandle) {
-  const [c0, c1, c2] = lastChannels || [];
-  if (!c0) return "";
-
-  const close = closedCandle.close;
-
-  // PATCH BREAKOUT ÚNIC:
-  // Si hi ha breakout en -1 o -2 → NO breakout actual
-  const breakoutPrev1 = c1?.accio?.includes("breakout");
-  const breakoutPrev2 = c2?.accio?.includes("breakout");
-
-  if (breakoutPrev1 || breakoutPrev2) {
-    // Només pot ser reingrés o blanc
-    const reingres = detectReingres(lastChannels, close);
-    return reingres || "";
-  }
-
-  // Si NO hi ha breakout recent → breakout FIAT pur
-  const breakout = detectBreakout(c0, close);
-  if (breakout) return breakout;
-
-  // Reingrés institucional
-  const reingres = detectReingres(lastChannels, close);
+  const reingres = detectarReingresFIAT(canalCongelat, prevClose, close);
   if (reingres) return reingres;
 
   return "";
