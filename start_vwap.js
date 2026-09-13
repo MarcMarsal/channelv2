@@ -35,6 +35,6 @@ async function debugOnce() {
 }
 
 // 🔥 Tria aquí el mode que vols
-//startBot();
-debugOnce();
+startBot();
+//debugOnce();
 
