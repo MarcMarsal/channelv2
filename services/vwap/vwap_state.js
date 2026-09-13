@@ -16,14 +16,34 @@ function dayStartUtc(timestamp) {
 /**
  * Carrega l’estat del dia per un símbol i timestamp.
  */
+/**
+ * Carrega l’estat del dia per un símbol i timestamp.
+ * Si existeix → el retorna convertint date_utc a UNIX ms.
+ * Si no existeix → crea estat buit.
+ */
 export async function loadState(symbol, timestamp) {
-    const dayUtc = dayStartUtc(timestamp);
+    const dateUtc = new Date(timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
 
-    const existing = await getStateForDay(symbol, dayUtc);
-    if (existing) return existing;
+    const existing = await getStateForDay(symbol, dateUtc);
 
-    // Estat buit FIAT PUR
-    return createEmptyState(symbol, dayUtc);
+    if (existing) {
+        // FIAT PUR: convertir date_utc correctament segons el tipus
+        if (typeof existing.date_utc === "string") {
+            // Format SQL: "2026-09-13"
+            const d = new Date(existing.date_utc + "T00:00:00Z");
+            existing.date_utc = d.getTime();
+        } else if (typeof existing.date_utc === "number") {
+            // Ja és UNIX ms → deixar-ho tal qual
+        } else {
+            // Valor inesperat → reiniciar estat del dia
+            existing.date_utc = Date.now();
+        }
+
+        return existing;
+    }
+
+    // Si no existeix, crear estat buit
+    return createEmptyState(symbol, dateUtc);
 }
 
 /**
