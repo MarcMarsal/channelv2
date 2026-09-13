@@ -1,22 +1,22 @@
 // db/vwap_state_repository.js
-// Descripció:
-// Accedeix a la taula `vwap_state` → carrega estat del dia → crea estat buit → guarda estat actualitzat.
-// Fitxer de base de dades FIAT PUR, sense lògica VWAP.
-
-// db/vwap_state_repository.js
-// Estat VWAP FIAT PUR → JS usa UNIX ms, PostgreSQL rep YYYY-MM-DD
+// FIAT PUR institucional:
+// - date_utc = 'YYYY-MM-DD' (string)
+// - updated_at = UNIX ms (timestamp de l’última vela tancada)
+// - sense conversions estranyes
+// - sense resets
+// - sense lògica de timestamps off-grid
 
 import { pool } from './postgres_pool.js';
 
 /**
- * Retorna l’estat del dia per un símbol i data UTC.
- * IMPORTANT: dateUtc ha de ser YYYY-MM-DD per PostgreSQL.
+ * Retorna l’estat del dia per un símbol i data UTC (YYYY-MM-DD).
  */
 export async function getStateForDay(symbol, dateUtc) {
     const query = `
         SELECT *
         FROM vwap_state
-        WHERE symbol = $1 AND date_utc = $2::date
+        WHERE symbol = $1
+          AND date_utc = $2
         LIMIT 1
     `;
 
@@ -26,30 +26,26 @@ export async function getStateForDay(symbol, dateUtc) {
 
 /**
  * Crea un estat buit per un nou dia.
- * Aquí mantenim UNIX ms (FIAT PUR per JS).
+ * dateUtc és un string 'YYYY-MM-DD'.
  */
-export function createEmptyState(symbol, dateUtcMs) {
+export function createEmptyState(symbol, dateUtc) {
     return {
         symbol,
-        date_utc: dateUtcMs,   // UNIX ms dins JS
+        date_utc: dateUtc,      // 🔥 FIAT PUR: string, no ms
         sum_pv: 0,
         sum_v: 0,
         sigma: 0,
         vwap: 0,
         candles_processed: 0,
-        updated_at: Date.now()
+        updated_at: null        // 🔥 Encara no hem processat cap vela
     };
 }
 
 /**
  * Guarda l’estat actualitzat a PostgreSQL.
- * Convertim UNIX ms → YYYY-MM-DD just abans de guardar.
+ * updated_at és UNIX ms (timestamp de la última vela tancada).
  */
 export async function saveState(symbol, state, vwapValue, sigmaValue) {
-
-    // FIAT PUR: convertir UNIX ms → YYYY-MM-DD per PostgreSQL
-    const dateUtcSql = new Date(state.date_utc).toISOString().slice(0, 10);
-
     const query = `
         INSERT INTO vwap_state (
             symbol, date_utc, sum_pv, sum_v, sigma, vwap, candles_processed, updated_at
@@ -67,12 +63,12 @@ export async function saveState(symbol, state, vwapValue, sigmaValue) {
 
     await pool.query(query, [
         symbol,
-        dateUtcSql,                 // <-- FIAT PUR per PostgreSQL
+        state.date_utc,          // 🔥 FIAT PUR: string YYYY-MM-DD
         state.sum_pv,
         state.sum_v,
         sigmaValue,
         vwapValue,
         state.candles_processed,
-        state.updated_at
+        state.updated_at         // 🔥 UNIX ms
     ]);
 }
