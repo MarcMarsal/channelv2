@@ -132,6 +132,8 @@ export async function processSymbolFIAT(symbol, candles) {
   const lastChannels = canalsRecents.rows;
 
   // calcular acció FI (breakout + reingrés) sobre la vela tancada
+  closedCandle.prev_close = prevCandle.close;
+
   const accioFinal = calcularAccioFI(lastChannels, closedCandle);
 
   // congelar canal FIAT tancat: afegir close, acció i confirm=true
