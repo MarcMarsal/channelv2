@@ -1,7 +1,6 @@
 // core/logic/fiat.js — FIAT PUR breakout + reingrés
 
 // BREAKOUT FIAT PUR
-// close_actual vs canal_actual + close_anterior vs canal_anterior
 export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, close) {
   if (!canalActual || !canalAnterior) return "";
 
@@ -26,7 +25,6 @@ export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, clos
 
 
 // REINGRÉS FIAT PUR
-// close vs close respecte al canal CONGELAT del breakout
 export function detectarReingresFIAT(canalCongelat, prevClose, close) {
   if (!canalCongelat) return "";
 
