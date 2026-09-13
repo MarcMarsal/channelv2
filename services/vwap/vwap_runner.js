@@ -7,7 +7,7 @@
 // - Si no ha canviat → no fa res
 
 import { getLastClosedCandle } from '../../db/candles_repository.js';
-import { loadState, saveState } from '../../db/vwap_state_repository.js';
+import { loadState, persistState } from './vwap_state.js';
 import { processCandle } from './vwap_processor.js';
 
 export async function runVWAPForSymbol(symbol) {
@@ -41,7 +41,7 @@ export async function runVWAPForSymbol(symbol) {
         const { newState, vwap, sigma } = processCandle(state, lastClosedCandle);
 
         // 🔥 Guardar estat actualitzat
-        await saveState(symbol, newState, vwap, sigma);
+        await persistState(symbol, newState, vwap, sigma);
 
         console.log("[VWAP RUNNER] Vela processada:", lastClosedCandle.timestamp);
         console.log("[VWAP RUNNER] VWAP:", vwap, "Sigma:", sigma);
