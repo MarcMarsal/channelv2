@@ -12,18 +12,15 @@ import { pool } from './postgres_pool.js';
  * Retorna l’estat del dia per un símbol i data UTC.
  * IMPORTANT: dateUtc ha de ser YYYY-MM-DD per PostgreSQL.
  */
-export async function getStateForDay(symbol, dateUtcMs) {
-    // Convertim UNIX ms → YYYY-MM-DD
-    const dateUtcSql = new Date(dateUtcMs).toISOString().slice(0, 10);
-
+export async function getStateForDay(symbol, dateUtc) {
     const query = `
         SELECT *
         FROM vwap_state
-        WHERE symbol = $1 AND date_utc = $2
+        WHERE symbol = $1 AND date_utc = $2::date
         LIMIT 1
     `;
 
-    const result = await pool.query(query, [symbol, dateUtcSql]);
+    const result = await pool.query(query, [symbol, dateUtc]);
     return result.rows[0] || null;
 }
 
