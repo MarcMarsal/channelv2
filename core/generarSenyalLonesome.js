@@ -66,7 +66,7 @@ export async function generarSenyalLonesome(
   if (lastAccio.includes("breakout")) {
     //  const alerta = `Breakout detectat (close=${entry}, canal=[${canal.lower}, ${canal.upper}])`;
   
-    const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, canal=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
+    const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
     await insertSignal({
       symbol,
