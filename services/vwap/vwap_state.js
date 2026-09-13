@@ -78,7 +78,8 @@ export function updateState(state, tp, volume) {
         sum_pv: newSumPV,
         sum_v: newSumV,
         candles_processed: state.candles_processed + 1,
-        updated_at: Date.now()
+        //updated_at: Date.now()
+        updated_at: state.updated_at   // placeholder, es sobreescriurà a processCandle
     };
 }
 
