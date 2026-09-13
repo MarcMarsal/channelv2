@@ -157,10 +157,10 @@ export async function generarSenyalLonesome(
     }
 
     // slope pla
-    if (Math.abs(canal.slope) < 0.0001) {
-      motiu = "slope_pla";
-      alerta = `NO ENTRA: slope_pla (abs(slope)=${Math.abs(canal.slope)} < minSlope=0.0001)`;
-    }
+    //if (Math.abs(canal.slope) < 0.0001) {
+    //  motiu = "slope_pla";
+    //  alerta = `NO ENTRA: slope_pla (abs(slope)=${Math.abs(canal.slope)} < minSlope=0.0001)`;
+    //}
 
     await insertSignal({
       symbol,
