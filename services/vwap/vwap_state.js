@@ -10,28 +10,20 @@ import { isNewUtcDay } from '../../utils/time.js';
 function dayStartUtc(timestamp) {
     const d = new Date(timestamp);
     d.setUTCHours(0, 0, 0, 0);
-    return d.getTime(); // número FIAT PUR
+    return d.getTime();
 }
 
 /**
  * Carrega l’estat del dia per un símbol i timestamp.
  */
-/**
- * Carrega l’estat del dia per un símbol i timestamp.
- * Si existeix → el retorna convertint date_utc a UNIX ms.
- * Si no existeix → crea estat buit.
- */
 export async function loadState(symbol, timestamp) {
-    // Dia actual en format YYYY-MM-DD
     const dateUtc = new Date(timestamp).toISOString().slice(0, 10);
 
-    // Estat existent del dia (si existeix)
     const existing = await getStateForDay(symbol, dateUtc);
 
     if (existing) {
 
         // 🔥 FIAT PUR: si l’estat és d’un altre dia → RESET
-        // Això evita que updated_at quedi desfasat i bloquegi el VWAP
         if (existing.date_utc !== dateUtc) {
             return createEmptyState(symbol, dateUtc);
         }
@@ -41,7 +33,6 @@ export async function loadState(symbol, timestamp) {
             const d = new Date(existing.date_utc + "T00:00:00Z");
             existing.date_utc = d.getTime();
         } else if (typeof existing.date_utc !== "number") {
-            // Valor inesperat → reiniciar estat del dia
             existing.date_utc = Date.now();
         }
 
@@ -49,11 +40,6 @@ export async function loadState(symbol, timestamp) {
     }
 
     // 🔥 Si no existeix estat → crear estat buit del dia actual
-    return createEmptyState(symbol, dateUtc);
-}
-
-
-    // Si no existeix, crear estat buit
     return createEmptyState(symbol, dateUtc);
 }
 
@@ -89,8 +75,7 @@ export function updateState(state, tp, volume) {
         sum_pv: newSumPV,
         sum_v: newSumV,
         candles_processed: state.candles_processed + 1,
-        //updated_at: Date.now()
-        updated_at: state.updated_at   // placeholder, es sobreescriurà a processCandle
+        updated_at: state.updated_at
     };
 }
 
