@@ -5,7 +5,7 @@
 
 import { processCandle } from './vwap_service.js';
 import { getCandlesSince } from '../../db/candles_repository.js';
-import { loadState } from './vwap_state.js';   // <-- IMPORTANT
+import { loadState } from './vwap_state.js';
 import { logInfo, logError } from '../../utils/logger.js';
 
 /**
@@ -19,16 +19,13 @@ export async function runVWAPForSymbol(symbol, sinceTimestamp) {
         let since = sinceTimestamp;
 
         if (since === null) {
-            // Carreguem estat del dia actual
             const state = await loadState(symbol, Date.now());
 
             if (state) {
-                // Processar només veles noves
-                since = state.updated_at;
+                since = state.updated_at;   // només veles noves
                 console.log(`[VWAP SINCE] Usant updated_at = ${new Date(since).toISOString()}`);
             } else {
-                // Primer dia → només últimes 24h
-                since = Date.now() - 24 * 60 * 60 * 1000;
+                since = Date.now() - 24 * 60 * 60 * 1000; // últimes 24h
                 console.log(`[VWAP SINCE] No hi ha estat → últimes 24h`);
             }
         }
@@ -75,4 +72,3 @@ export async function runVWAPForSymbols(symbols, sinceTimestamp) {
         await runVWAPForSymbol(symbol, sinceTimestamp);
     }
 }
-
