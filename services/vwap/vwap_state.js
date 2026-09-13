@@ -1,72 +1,31 @@
 // services/vwap/vwap_state.js
-// Estat VWAP FIAT PUR → sense strings de dates → tot en UNIX ms
+// Estat VWAP FIAT PUR per al nou flux institucional:
+// - Cada dia s’identifica per date_utc (YYYY-MM-DD)
+// - updated_at = timestamp de l’última vela tancada
+// - Sense SINCE, sense Date.now(), sense resets estranys
 
 import { getStateForDay, createEmptyState, saveState } from '../../db/vwap_state_repository.js';
-import { isNewUtcDay } from '../../utils/time.js';
 
 /**
- * Converteix un timestamp a l’inici del dia UTC (UNIX ms)
+ * Carrega l’estat del dia per un símbol i una data UTC (YYYY-MM-DD).
+ * Si no existeix, crea un estat buit.
  */
-function dayStartUtc(timestamp) {
-    const d = new Date(timestamp);
-    d.setUTCHours(0, 0, 0, 0);
-    return d.getTime();
-}
-
-/**
- * Carrega l’estat del dia per un símbol i timestamp.
- */
-export async function loadState(symbol, timestamp) {
-    const dateUtc = new Date(timestamp).toISOString().slice(0, 10);
-
+export async function loadState(symbol, dateUtc) {
     const existing = await getStateForDay(symbol, dateUtc);
 
     if (existing) {
-
-        // 🔥 FIAT PUR: si l’estat és d’un altre dia → RESET
-        if (existing.date_utc !== dateUtc) {
-            return createEmptyState(symbol, dateUtc);
-        }
-
-        // 🔥 FIAT PUR: convertir date_utc correctament
-        if (typeof existing.date_utc === "string") {
-            const d = new Date(existing.date_utc + "T00:00:00Z");
-            existing.date_utc = d.getTime();
-        } else if (typeof existing.date_utc !== "number") {
-            existing.date_utc = Date.now();
-        }
-
         return existing;
     }
 
-    // 🔥 Si no existeix estat → crear estat buit del dia actual
+    // Estat buit per al dia
     return createEmptyState(symbol, dateUtc);
 }
 
 /**
- * Reinicia l’estat si ha canviat el dia UTC.
+ * Actualitza sum_pv, sum_v, candles_processed i updated_at
+ * amb la informació de la vela tancada.
  */
-export function resetIfNewDay(state, timestamp) {
-    const dayUtc = dayStartUtc(timestamp);
-
-    if (!isNewUtcDay(state.date_utc, dayUtc)) return state;
-
-    return {
-        symbol: state.symbol,
-        date_utc: dayUtc,
-        sum_pv: 0,
-        sum_v: 0,
-        sigma: 0,
-        vwap: 0,
-        candles_processed: 0,
-        updated_at: timestamp
-    };
-}
-
-/**
- * Actualitza sumPV, sumV i incrementa candles_processades.
- */
-export function updateState(state, tp, volume) {
+export function updateState(state, tp, volume, candleTimestamp) {
     const newSumPV = state.sum_pv + tp * volume;
     const newSumV = state.sum_v + volume;
 
@@ -75,7 +34,7 @@ export function updateState(state, tp, volume) {
         sum_pv: newSumPV,
         sum_v: newSumV,
         candles_processed: state.candles_processed + 1,
-        updated_at: state.updated_at
+        updated_at: candleTimestamp   // 🔥 FIAT PUR: timestamp de l’última vela tancada
     };
 }
 
