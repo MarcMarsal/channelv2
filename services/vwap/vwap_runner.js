@@ -2,13 +2,13 @@
 // Flux institucional FIAT PUR:
 // - Carrega estat del dia actual
 // - Llegeix l’última vela tancada (confirm = true)
-// - Si el timestamp ha canviat → processa la vela
+// - Si el timestamp ha canviat → processa la vela completa (TP → VWAP → sigma → bandes → distàncies → volum → condicions → entrada → debug)
 // - Guarda estat
 // - Si no ha canviat → no fa res
 
 import { getLastClosedCandle } from '../../db/candles_repository.js';
 import { loadState, persistState } from './vwap_state.js';
-import { processCandle } from './vwap_processor.js';
+import { processClosedCandle } from './vwap_service.js';
 
 export async function runVWAPForSymbol(symbol) {
     try {
@@ -37,8 +37,10 @@ export async function runVWAPForSymbol(symbol) {
             return;
         }
 
-        // 🔥 Processar la nova vela tancada
-        const { newState, vwap, sigma } = processCandle(state, lastClosedCandle);
+        // 🔥 Processar la nova vela tancada (pipeline complet)
+        const result = await processClosedCandle(state, lastClosedCandle);
+
+        const { state: newState, vwap, sigma } = result;
 
         // 🔥 Guardar estat actualitzat
         await persistState(symbol, newState, vwap, sigma);
