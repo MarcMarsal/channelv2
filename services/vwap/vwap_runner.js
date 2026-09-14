@@ -12,7 +12,7 @@ import { processClosedCandle } from './vwap_service.js';
 
 export async function runVWAPForSymbol(symbol) {
     try {
-        console.log(`[VWAP RUNNER] Iniciant per ${symbol}`);
+        //console.log(`[VWAP RUNNER] Iniciant per ${symbol}`);
 
         // 🔥 FIAT PUR: data UTC del dia actual (YYYY-MM-DD)
         const now = new Date();
