@@ -151,7 +151,9 @@ export async function generarSenyalLonesome(
     let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
 
     // canal estret
-    if (canal.dev < 0.5) {
+    //if (canal.dev < 0.5) {
+    if ((canal.upper - canal.lower) / canal.mid < 0.003) {
+
       motiu = "canal_estret";
       alerta = `NO ENTRA: canal_estret (dev=${canal.dev} < threshold=0.5)`;
     }
