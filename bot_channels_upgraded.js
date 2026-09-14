@@ -5,7 +5,7 @@ import { client, initDB } from "./db/client.js";
 
 import { formatSpainDate, formatSpainTime } from "./core/utils.js";
 import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
-import { calcularAccioFI } from "./core/logic/fiat.js";
+import { calcularAccioFI } from "./core/fiat.js";
 import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
 
 const ACTIVE_CRYPTOS = [
