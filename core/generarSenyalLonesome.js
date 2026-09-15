@@ -72,7 +72,7 @@ export async function generarSenyalLonesome(
 
   const side = getSideFromAccio(lastAccio);
 
-  // 1) BREAKOUT FIAT PUR (event, NO trade)
+  // 1) BREAKOUT FIAT PUR
   if (lastAccio.includes("breakout")) {
     const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
