@@ -1,4 +1,4 @@
-// core/fiat.js — FIAT PUR breakout + reingrés + mean-reversion pur + wick-test
+// core/fiat.js — FIAT PUR breakout + reingrés + mean-reversion pur + wick-test + reentrada
 
 // -------------------------------------------------------------
 // BREAKOUT FIAT PUR
@@ -20,7 +20,7 @@ export function detectarBreakoutFIAT(canalActual, canalAnterior, prevClose, clos
 
 
 // -------------------------------------------------------------
-// REINGRÉS FIAT PUR
+// REINGRÉS FIAT PUR (circuit 1: breakout → reingrés)
 // -------------------------------------------------------------
 export function detectarReingresFIAT(canalCongelat, prevClose, close) {
   if (!canalCongelat) return "";
@@ -36,7 +36,7 @@ export function detectarReingresFIAT(canalCongelat, prevClose, close) {
 
 
 // -------------------------------------------------------------
-// WICK TEST — mètxa surt del canal però el close NO trenca
+// WICK TEST — mètxa surt del canal però el close NO trenca (circuit 2)
 // -------------------------------------------------------------
 export function detectarWickTest(c0, closedCandle) {
   const { high, low, close } = closedCandle;
@@ -56,7 +56,7 @@ export function detectarWickTest(c0, closedCandle) {
 
 
 // -------------------------------------------------------------
-// DRIFTING — mètxes repetides + veles petites + rang enganxat
+// DRIFTING — mètxes repetides + veles petites + rang enganxat (circuit 2)
 // -------------------------------------------------------------
 export function detectarDrifting(c0, closedCandle) {
   const { high, low, open, close } = closedCandle;
@@ -77,7 +77,7 @@ export function detectarDrifting(c0, closedCandle) {
 
 
 // -------------------------------------------------------------
-// IMPULS REAL — cos ≥ 40% + direcció cap al mid + MACD + ATR
+// IMPULS REAL — cos ≥ 40% + direcció cap al mid + MACD + ATR (circuit 2)
 // -------------------------------------------------------------
 export function detectarImpulsReal(c0, closedCandle, macd, atr) {
   const { high, low, open, close } = closedCandle;
@@ -104,7 +104,7 @@ export function detectarImpulsReal(c0, closedCandle, macd, atr) {
 
 
 // -------------------------------------------------------------
-// MEAN‑REVERSION PUR — drifting → impuls real → gir cap al mid
+// MEAN‑REVERSION PUR — drifting → impuls real → gir cap al mid (circuit 2)
 // -------------------------------------------------------------
 export function detectarMeanReversionPur(lastChannels, closedCandle, macd, atr) {
   if (!lastChannels || lastChannels.length < 1) return "";
@@ -127,7 +127,24 @@ export function detectarMeanReversionPur(lastChannels, closedCandle, macd, atr) 
 
 
 // -------------------------------------------------------------
-// Funció principal FIAT PUR + mean‑reversion pur + wick-test
+// REENTRADA FIAT PUR (circuit 2: wick → reentrada)
+// -------------------------------------------------------------
+export function detectarReentradaFIAT(c0, c1, prevClose, close) {
+  if (!c1 || !c1.accio || !c1.accio.includes("wick_test")) return "";
+
+  const uc = c0.upper;
+  const lc = c0.lower;
+
+  // Equivalent a reingrés, però basat en wick anterior, no en breakout
+  if (prevClose > uc && close <= uc) return "reentrada_superior";
+  if (prevClose < lc && close >= lc) return "reentrada_inferior";
+
+  return "";
+}
+
+
+// -------------------------------------------------------------
+// Funció principal FIAT PUR + mean‑reversion pur + wick-test + reentrada
 // -------------------------------------------------------------
 export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
   if (!lastChannels || lastChannels.length < 2) return "";
@@ -137,11 +154,11 @@ export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
   const close     = closedCandle.close;
   const prevClose = closedCandle.prev_close;
 
-  // 1) BREAKOUT FIAT PUR
+  // 1) BREAKOUT FIAT PUR (circuit 1)
   const breakout = detectarBreakoutFIAT(c0, c1, prevClose, close);
   if (breakout) return breakout;
 
-  // 2) REINGRÉS FIAT PUR
+  // 2) REINGRÉS FIAT PUR (circuit 1: només si hi ha breakout previ)
   let canalCongelat = null;
 
   for (const ch of lastChannels.slice(0, 3)) {
@@ -156,11 +173,15 @@ export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
     if (reingres) return reingres;
   }
 
-  // 2.5) WICK TEST (avís institucional)
+  // 2.5) WICK TEST (circuit 2: avís institucional)
   const wick = detectarWickTest(c0, closedCandle);
   if (wick) return wick;
 
-  // 3) MEAN‑REVERSION PUR
+  // 2.6) REENTRADA FIAT PUR (circuit 2: wick → reentrada)
+  const reentrada = detectarReentradaFIAT(c0, c1, prevClose, close);
+  if (reentrada) return reentrada;
+
+  // 3) MEAN‑REVERSION PUR (circuit 2)
   const mrp = detectarMeanReversionPur(lastChannels, closedCandle, macd, atr);
   if (mrp) return mrp;
 
