@@ -8,7 +8,8 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
   const lower = canal.lower;
   const dev   = canal.dev ?? 0;
 
-  const accio = closedCandle.accio || "";
+  // 🔥 FIAT PUR: acció extesa és la que marca reingrés, reentrada, impuls...
+  const accio = closedCandle.accio_extesa || closedCandle.accio || "";
 
   let tp         = null;
   let sl_futures = null;
@@ -18,12 +19,10 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
   if (accio.startsWith("reingres")) {
     tp = mid;
 
-    // FUTURS — SL curt institucional
     sl_futures = accio === "reingres_superior"
       ? upper
       : lower;
 
-    // SPOT — SL ampliat
     sl_spot = accio === "reingres_superior"
       ? upper + dev
       : lower - dev;
@@ -35,10 +34,8 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
       ? lower
       : upper;
 
-    // FUTURS — SL curt institucional
     sl_futures = mid;
 
-    // SPOT — SL ampliat
     sl_spot = accio === "breakout_superior"
       ? mid + dev
       : mid - dev;
@@ -46,4 +43,3 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
 
   return { tp, sl_futures, sl_spot };
 }
-
