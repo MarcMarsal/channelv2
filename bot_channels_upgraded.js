@@ -118,12 +118,13 @@ export async function processSymbolFIAT(symbol, candles) {
 
   if (canalReal.confirm === true) return;
 
+  // 🔥 FIAT PUR: necessitem 4 veles per detectar breakout N i reingrés N+2
   const canalsRecents = await client.query(`
     SELECT id, upper, lower, accio, slope, dev, operable, reason
     FROM channels_fiat
     WHERE symbol = $1
     ORDER BY timestamp DESC
-    LIMIT 3
+    LIMIT 4
   `, [symbol]);
 
   const lastChannels = canalsRecents.rows;
@@ -154,6 +155,16 @@ export async function processSymbolFIAT(symbol, candles) {
 
   // 🔥 FIAT PUR: qualsevol acció genera senyal
   if (accioFinal) {
+
+    // 🔥 FIAT PUR: breakout pot ser N o N+1
+    let prevAccioFIAT = "";
+
+    if (lastChannels[2]?.accio?.includes("breakout")) {
+      prevAccioFIAT = lastChannels[2].accio;   // breakout a N+1 → reingrés immediat
+    } else if (lastChannels[3]?.accio?.includes("breakout")) {
+      prevAccioFIAT = lastChannels[3].accio;   // breakout a N → reingrés a N+2
+    }
+
     await generarSenyalLonesome(
       symbol,
       tsClosed,
@@ -162,8 +173,7 @@ export async function processSymbolFIAT(symbol, candles) {
       {
         ...canalReal,
         accio: accioFinal,
-        //prev_accio: lastChannels[1]?.accio || "",
-        prev_accio: lastChannels[2]?.accio || "",
+        prev_accio: prevAccioFIAT,
         close: closedCandle.close,
         macd,
         atr
