@@ -162,7 +162,8 @@ export async function processSymbolFIAT(symbol, candles) {
       {
         ...canalReal,
         accio: accioFinal,
-        prev_accio: lastChannels[1]?.accio || "",
+        //prev_accio: lastChannels[1]?.accio || "",
+        prev_accio: lastChannels[2]?.accio || "",
         close: closedCandle.close,
         macd,
         atr
