@@ -1,36 +1,49 @@
-// core/logic/tp_sl_calculation.js — versió final blindada
+// core/logic/tp_sl_calculation.js — FIAT PUR dual (futures + spot)
 
 export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
-  if (!canal) return { tp: null, sl: null };
+  if (!canal) return { tp: null, sl_futures: null, sl_spot: null };
 
-  const mid = canal.mid ?? null;
-  const upper = canal.upper ?? null;
-  const lower = canal.lower ?? null;
-  const atr = canal.dev ?? 0;
+  const mid   = canal.mid;
+  const upper = canal.upper;
+  const lower = canal.lower;
+  const dev   = canal.dev ?? 0;
 
   const accio = closedCandle.accio || "";
 
-  if (mid == null || upper == null || lower == null) {
-    return { tp: null, sl: null };
-  }
+  let tp         = null;
+  let sl_futures = null;
+  let sl_spot    = null;
 
-  let tp = null;
-  let sl = null;
-
+  // REINGRÉS FIAT PUR
   if (accio.startsWith("reingres")) {
     tp = mid;
-    sl = accio === "reingres_superior"
-      ? upper + atr
-      : lower - atr;
+
+    // FUTURS — SL curt institucional
+    sl_futures = accio === "reingres_superior"
+      ? upper
+      : lower;
+
+    // SPOT — SL ampliat
+    sl_spot = accio === "reingres_superior"
+      ? upper + dev
+      : lower - dev;
   }
 
+  // BREAKOUT FIAT PUR
   if (accio.startsWith("breakout")) {
     tp = accio === "breakout_superior"
       ? lower
       : upper;
 
-    sl = mid;
+    // FUTURS — SL curt institucional
+    sl_futures = mid;
+
+    // SPOT — SL ampliat
+    sl_spot = accio === "breakout_superior"
+      ? mid + dev
+      : mid - dev;
   }
 
-  return { tp, sl };
+  return { tp, sl_futures, sl_spot };
 }
+
