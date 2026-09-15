@@ -1,5 +1,3 @@
-// bot_channels_upgraded.js — LonesomeTheBlue PUR (canals FIAT + breakout + reingrés + criteris Lonesome)
-
 import cron from "node-cron";
 import { client, initDB } from "./db/client.js";
 
@@ -8,43 +6,6 @@ import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
 import { calcularAccioFI } from "./core/fiat.js";
 import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
 
-// 🔥 NOU: importem MACD + ATR
-import { calculateMACD, calculateATR } from "./core/indicators.js";
-
-const ACTIVE_CRYPTOS = [
-  "APT-USDT","ARBMarc, **perfecte — ja tens els camps creats a la base de dades**, així que ara toca **modificar el bot principal** perquè:
-
-1. Calculi **MACD + ATR**  
-2. Els **guardi al canal FIAT congelat**  
-3. Els **passi a generarSenyalLonesome**  
-4. Accepti la nova acció **`mean_reversion_pur_*`**  
-5. Quedi preparat per integrar la lògica de mean‑reversion pur
-
-A continuació tens **el fitxer completament modificat**, FIAT, net, i llest per enganxar.
-
----
-
-# 🟩 Fitxer actualitzat: `bot_channels_upgraded.js`
-
-> **Inclou:**
-> - importació d’indicadors  
-> - càlcul MACD + ATR  
-> - guardat a la DB  
-> - ampliació del trigger de senyal  
-> - preparació per mean‑reversion pur
-
-```js
-// bot_channels_upgraded.js — LonesomeTheBlue PUR (canals FIAT + breakout + reingrés + mean-reversion + criteris Lonesome)
-
-import cron from "node-cron";
-import { client, initDB } from "./db/client.js";
-
-import { formatSpainDate, formatSpainTime } from "./core/utils.js";
-import { calculateChannelFIAT } from "./core/calculateChannelFIAT.js";
-import { calcularAccioFI } from "./core/fiat.js";
-import { generarSenyalLonesome } from "./core/generarSenyalLonesome.js";
-
-// 🔥 NOU: indicadors
 import { calculateMACD, calculateATR } from "./core/indicators.js";
 
 const ACTIVE_CRYPTOS = [
@@ -76,15 +37,11 @@ export async function processSymbolFIAT(symbol, candles) {
   const tsClosed = closedCandle.timestamp;
   const tsOpen   = openCandle.timestamp;
 
-  // -------------------------------------------------------------
-  // 🔥 0) CALCULAR INDICADORS (MACD + ATR)
-  // -------------------------------------------------------------
+  // INDICADORS
   const macd = calculateMACD(candles);
   const atr  = calculateATR(candles);
 
-  // -------------------------------------------------------------
-  // 1) CANAL OBERT (tsOpen) — es pot actualitzar mentre confirm=false
-  // -------------------------------------------------------------
+  // CANAL OBERT
   const canalOpen = calculateChannelFIAT(candles);
 
   const existingOpen = await client.query(`
@@ -94,7 +51,6 @@ export async function processSymbolFIAT(symbol, candles) {
   `, [symbol, tsOpen]);
 
   if (existingOpen.rows.length === 0) {
-    // crear canal obert
     await client.query(`
       INSERT INTO channels_fiat (
         symbol, slope, intercept, dev, devlen, mid,
@@ -138,7 +94,6 @@ export async function processSymbolFIAT(symbol, candles) {
       atr
     ]);
   } else {
-    // opcional: actualitzar només close del canal obert si encara no està confirmat
     const row = existingOpen.rows[0];
     if (row.confirm === false) {
       await client.query(`
@@ -149,9 +104,7 @@ export async function processSymbolFIAT(symbol, candles) {
     }
   }
 
-  // -------------------------------------------------------------
-  // 2) CANAL TANCAT (tsClosed) — només es processa si confirm=false
-  // -------------------------------------------------------------
+  // CANAL TANCAT
   const existingClosed = await client.query(`
     SELECT *
     FROM channels_fiat
@@ -159,18 +112,12 @@ export async function processSymbolFIAT(symbol, candles) {
     LIMIT 1
   `, [symbol, tsClosed]);
 
-  if (existingClosed.rows.length === 0) {
-    return;
-  }
+  if (existingClosed.rows.length === 0) return;
 
   const canalReal = existingClosed.rows[0];
 
-  // PATCH FIAT: si el canal ja està confirmat, NO es toca mai més
-  if (canalReal.confirm === true) {
-    return;
-  }
+  if (canalReal.confirm === true) return;
 
-  // canals recents per reingrés (ordre DESC)
   const canalsRecents = await client.query(`
     SELECT id, upper, lower, accio, slope, dev, operable, reason
     FROM channels_fiat
@@ -181,12 +128,10 @@ export async function processSymbolFIAT(symbol, candles) {
 
   const lastChannels = canalsRecents.rows;
 
-  // calcular acció FI (breakout + reingrés + mean-reversion)
   closedCandle.prev_close = prevCandle.close;
 
   const accioFinal = calcularAccioFI(lastChannels, closedCandle, macd, atr);
 
-  // congelar canal FIAT tancat: afegir close, acció, confirm=true, MACD, ATR
   await client.query(`
     UPDATE channels_fiat
     SET close   = $1,
@@ -207,7 +152,6 @@ export async function processSymbolFIAT(symbol, candles) {
     atr
   ]);
 
-  // ALERTES NOMÉS SI HI HA ACCIÓ REAL (breakout, reingrés, mean-reversion)
   if (
     accioFinal &&
     (
@@ -230,8 +174,6 @@ export async function processSymbolFIAT(symbol, candles) {
       }
     );
   }
-
-  // FI: aquest canal ja queda congelat (confirm=true) i mai més es toca
 }
 
 async function mainLoop() {
@@ -247,7 +189,7 @@ async function mainLoop() {
 
 async function startBot() {
   await initDB();
-  console.log("Bot LonesomeTheBlue PUR 15m en marxa (FIAT + MACD + ATR + mean-reversion)");
+  console.log("Bot LonesomeTheBlue PUR 15m en marxa (FIAT + MACD + ATR)");
   cron.schedule("* * * * *", mainLoop);
 }
 
