@@ -47,7 +47,8 @@ export async function generarSenyalLonesome(
       side: null,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -71,7 +72,7 @@ export async function generarSenyalLonesome(
 
   const side = getSideFromAccio(lastAccio);
 
-  // 1) BREAKOUT FIAT PUR
+  // 1) BREAKOUT FIAT PUR (event, NO trade)
   if (lastAccio.includes("breakout")) {
     const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
@@ -82,7 +83,8 @@ export async function generarSenyalLonesome(
       side,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -115,7 +117,8 @@ export async function generarSenyalLonesome(
       side: null,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -148,7 +151,8 @@ export async function generarSenyalLonesome(
       side,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -179,7 +183,7 @@ export async function generarSenyalLonesome(
   // 4) SOROLL
   const noise = isNoise(slopeDir, canal.dev);
 
-  // 5) CAS FIAT — CRIDA CORRECTA
+  // 5) CAS FIAT
   const lastAccioFIAT = canal?.accio || "";
   const prevAccioFIAT = canal?.prev_accio || "";
 
@@ -213,7 +217,8 @@ export async function generarSenyalLonesome(
       side,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -235,13 +240,16 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 7) TP/SL
-  //const { tp, sl, rr } = calculateTpSl(cas, closedCandle, slopeDir);
-  const { tp, sl_futures, sl_spot } = calculateTpSl(cas, closedCandle, slopeDir, canal);
+  // 7) TP/SL dual (futures + spot)
+  const { tp, sl_futures, sl_spot } = calculateTpSl(
+    cas,
+    closedCandle,
+    slopeDir,
+    canal
+  );
 
-
-  if (tp == null || sl == null) {
-    const alerta = `TP/SL invalid (tp=${tp}, sl=${sl})`;
+  if (tp == null || sl_futures == null) {
+    const alerta = `TP/SL invalid (tp=${tp}, sl_futures=${sl_futures})`;
 
     await insertSignal({
       symbol,
@@ -250,7 +258,8 @@ export async function generarSenyalLonesome(
       side,
       entry,
       tp: null,
-      sl: null,
+      sl_futures: null,
+      sl_spot: null,
       timestamp,
       date_es,
       hora_es,
@@ -283,7 +292,7 @@ export async function generarSenyalLonesome(
     lastAccio,
     cas,
     tp,
-    sl
+    sl: sl_futures
   });
 
   // 9) SENYAL FINAL
@@ -294,7 +303,8 @@ export async function generarSenyalLonesome(
     side,
     entry,
     tp,
-    sl,
+    sl_futures,
+    sl_spot,
     timestamp,
     date_es,
     hora_es,
