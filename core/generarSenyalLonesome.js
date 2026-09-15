@@ -106,7 +106,7 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 1.5) WICK TEST
+  // 1.5) WICK TEST → RAW
   if (lastAccio.includes("wick_test")) {
     const alerta = `WICK TEST: mètxa ha punxat el canal sense trencar (close=${fmt(entry, symbol)})`;
 
@@ -128,7 +128,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "wick_test",
       alerta,
-      prevAccio: null,
+      prevAccio: canal.prev_accio || null,
       macd: macdObj.macd ?? null,
       macd_signal: macdObj.signal ?? null,
       macd_hist: macdObj.hist ?? null,
@@ -162,7 +162,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "accio_buida",
       alerta,
-      prevAccio: null,
+      prevAccio: canal.prev_accio || null,
       macd: macdObj.macd ?? null,
       macd_signal: macdObj.signal ?? null,
       macd_hist: macdObj.hist ?? null,
@@ -281,6 +281,11 @@ export async function generarSenyalLonesome(
     return;
   }
 
+  // 7.5) RR
+  const risk = Math.abs(entry - sl_futures);
+  const reward = Math.abs(tp - entry);
+  const rr = risk > 0 ? reward / risk : null;
+
   // 8) ALERTA FINAL
   const alerta = buildAlert({
     slope: canal.slope,
@@ -295,7 +300,7 @@ export async function generarSenyalLonesome(
     sl: sl_futures
   });
 
-  // 9) SENYAL FINAL
+  // 9) SENYAL FINAL → TRADE
   await insertSignal({
     symbol,
     type: "TRADE",
