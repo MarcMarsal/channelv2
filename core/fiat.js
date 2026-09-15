@@ -41,12 +41,10 @@ export function detectarReingresFIAT(canalCongelat, prevClose, close) {
 export function detectarWickTest(c0, closedCandle) {
   const { high, low, close } = closedCandle;
 
-  // Test superior: mètxa surt per dalt, però el close queda dins
   if (high > c0.upper && close < c0.upper) {
     return "wick_test_superior";
   }
 
-  // Test inferior: mètxa surt per baix, però el close queda dins
   if (low < c0.lower && close > c0.lower) {
     return "wick_test_inferior";
   }
@@ -63,7 +61,7 @@ export function detectarDrifting(c0, closedCandle) {
 
   const body = Math.abs(close - open);
   const range = high - low;
-  const bodyPct = body / range;
+  const bodyPct = range > 0 ? body / range : 0;
 
   const nearUpper = high >= c0.upper * 0.995;
   const nearLower = low <= c0.lower * 1.005;
@@ -84,7 +82,7 @@ export function detectarImpulsReal(c0, closedCandle, macd, atr) {
 
   const body = Math.abs(close - open);
   const range = high - low;
-  const bodyPct = body / range;
+  const bodyPct = range > 0 ? body / range : 0;
 
   if (bodyPct < 0.40) return false;
 
@@ -127,17 +125,20 @@ export function detectarMeanReversionPur(lastChannels, closedCandle, macd, atr) 
 
 
 // -------------------------------------------------------------
-// REENTRADA FIAT PUR (circuit 2: wick → reentrada)
+// REENTRADA FIAT PUR (circuit 2: wick → reentrada cap al mid)
 // -------------------------------------------------------------
 export function detectarReentradaFIAT(c0, c1, prevClose, close) {
   if (!c1 || !c1.accio || !c1.accio.includes("wick_test")) return "";
 
-  const uc = c0.upper;
-  const lc = c0.lower;
+  const mid = c0.mid;
 
-  // Equivalent a reingrés, però basat en wick anterior, no en breakout
-  if (prevClose > uc && close <= uc) return "reentrada_superior";
-  if (prevClose < lc && close >= lc) return "reentrada_inferior";
+  // Reentrada: després d’un wick, el close torna cap al mid
+  const distMid = Math.abs(close - mid) / mid;
+
+  if (distMid < 0.01) {
+    if (close > mid) return "reentrada_superior";
+    if (close < mid) return "reentrada_inferior";
+  }
 
   return "";
 }
@@ -177,7 +178,7 @@ export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
   const wick = detectarWickTest(c0, closedCandle);
   if (wick) return wick;
 
-  // 2.6) REENTRADA FIAT PUR (circuit 2: wick → reentrada)
+  // 2.6) REENTRADA FIAT PUR (circuit 2: wick → reentrada cap al mid)
   const reentrada = detectarReentradaFIAT(c0, c1, prevClose, close);
   if (reentrada) return reentrada;
 
