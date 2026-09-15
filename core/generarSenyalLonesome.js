@@ -236,7 +236,9 @@ export async function generarSenyalLonesome(
   }
 
   // 7) TP/SL
-  const { tp, sl, rr } = calculateTpSl(cas, closedCandle, slopeDir);
+  //const { tp, sl, rr } = calculateTpSl(cas, closedCandle, slopeDir);
+  const { tp, sl_futures, sl_spot } = calculateTpSl(cas, closedCandle, slopeDir, canal);
+
 
   if (tp == null || sl == null) {
     const alerta = `TP/SL invalid (tp=${tp}, sl=${sl})`;
