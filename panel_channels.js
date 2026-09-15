@@ -1,4 +1,4 @@
-// panel_channels.js — FIAT + LonesomeTheBlue (sense OCR, amb motius i info Lonesome)
+// panel_channels.js — FIAT + LonesomeTheBlue PUR (sense OCR, amb motius i info Lonesome)
 
 import http from "http";
 import { initDB, client } from "./db/client.js";
@@ -7,7 +7,7 @@ import { DECIMALS, fmt } from "./core/decimals.js";
 import { getActiveSignals, getChannels } from "./core/getChannelInfo.js";
 
 // -------------------------------------------------------------
-// TAULA DE CANALS FIAT 15m (sense OCR)
+// TAULA DE CANALS FIAT 15m
 // -------------------------------------------------------------
 function renderChannelsTable(channels) {
   let rows = "";
@@ -53,6 +53,10 @@ function renderChannelsTable(channels) {
           <option value="all">Tots els canals</option>
           <option value="accio">Només canals amb acció</option>
           <option value="reingres">Només reingressos</option>
+          <option value="reentrada">Només reentrades</option>
+          <option value="wick">Només wick_test</option>
+          <option value="mrp">Només mean‑reversion pur</option>
+          <option value="breakout">Només breakouts</option>
         </select>
       </label>
 
@@ -97,6 +101,11 @@ function renderChannelsTable(channels) {
           let hide = false;
 
           if (mode === "reingres" && !accio.includes("reingres")) hide = true;
+          if (mode === "reentrada" && !accio.includes("reentrada")) hide = true;
+          if (mode === "wick" && !accio.includes("wick_test")) hide = true;
+          if (mode === "mrp" && !accio.includes("mean_reversion_pur")) hide = true;
+          if (mode === "breakout" && !accio.includes("breakout")) hide = true;
+
           if (mode === "accio" && accio === "") hide = true;
           if (sym !== "all" && symbol !== sym) hide = true;
 
@@ -128,7 +137,7 @@ function renderChannelsTable(channels) {
 }
 
 // -------------------------------------------------------------
-// TAULA D'ALERTES LONESOME PUR (Entrada + TP/SL + motius)
+// TAULA DE SENYALS FIAT PUR + LONESOME
 // -------------------------------------------------------------
 function renderActiveSignalsTable(signals) {
   let rows = "";
@@ -142,10 +151,7 @@ function renderActiveSignalsTable(signals) {
         <td>${fmt(s.entry, s.symbol)}</td>
         <td>${s.tp != null ? fmt(s.tp, s.symbol) : "-"}</td>
 
-        <!-- SL FUTURES -->
         <td>${s.sl != null ? fmt(s.sl, s.symbol) : "-"}</td>
-
-        <!-- SL SPOT -->
         <td>${s.sl_spot != null ? fmt(s.sl_spot, s.symbol) : "-"}</td>
 
         <td>${s.alerta || "-"}</td>
