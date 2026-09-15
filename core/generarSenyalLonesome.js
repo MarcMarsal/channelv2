@@ -141,50 +141,52 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
-  // -------------------------------------------------------------
-  // 6) DECISIÓ D’ENTRADA
-  // -------------------------------------------------------------
-  const entra = shouldEnter(cas);
+// -------------------------------------------------------------
+// 6) DECISIÓ D’ENTRADA
+// -------------------------------------------------------------
+const entra = shouldEnter(cas);
 
-  if (!entra) {
-    let motiu = `CAS_${cas}_no_entra`;
-    let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
+// Calculem amplada relativa FIAT
+const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
 
-    // canal estret
-    //if (canal.dev < 0.5) {
-    if ((canal.upper - canal.lower) / canal.mid < 0.003) {
+if (!entra) {
+  let motiu = `CAS_${cas}_no_entra`;
+  let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
 
-      motiu = "canal_estret";
-      alerta = `NO ENTRA: canal_estret (dev=${canal.dev} < threshold=0.5)`;
-    }
-
-    // slope pla
-    //if (Math.abs(canal.slope) < 0.0001) {
-    //  motiu = "slope_pla";
-    //  alerta = `NO ENTRA: slope_pla (abs(slope)=${Math.abs(canal.slope)} < minSlope=0.0001)`;
-    //}
-
-    await insertSignal({
-      symbol,
-      type: "DISCARDED",
-      stage: "evaluation",
-      side,
-      entry,
-      tp: null,
-      sl: null,
-      timestamp,
-      date_es,
-      hora_es,
-      timestamp_es,
-      canal,
-      cas,
-      rr: null,
-      reason: motiu,
-      alerta,
-      prevAccio: null
-    });
-    return;
+  // CANAL MASSA ESTRET (FIAT PUR)
+  if (amplada_relativa < 0.003) {
+    motiu = "canal_massa_estret";
+    alerta = `NO ENTRA: canal massa estret (amplada_relativa=${amplada_relativa.toFixed(4)} < 0.003)`;
   }
+
+  // CANAL MASSA AMPLE (FIAT PUR)
+  else if (amplada_relativa > 0.06) {
+    motiu = "canal_massa_ample";
+    alerta = `NO ENTRA: canal massa ample (amplada_relativa=${amplada_relativa.toFixed(4)} > 0.06)`;
+  }
+
+  await insertSignal({
+    symbol,
+    type: "DISCARDED",
+    stage: "evaluation",
+    side,
+    entry,
+    tp: null,
+    sl: null,
+    timestamp,
+    date_es,
+    hora_es,
+    timestamp_es,
+    canal,
+    cas,
+    rr: null,
+    reason: motiu,
+    alerta,
+    prevAccio: null
+  });
+  return;
+}
+
 
   // -------------------------------------------------------------
   // 7) TP/SL
