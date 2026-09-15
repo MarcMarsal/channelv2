@@ -152,14 +152,8 @@ export async function processSymbolFIAT(symbol, candles) {
     atr
   ]);
 
-  if (
-    accioFinal &&
-    (
-      accioFinal.includes("breakout") ||
-      accioFinal.includes("reingres") ||
-      accioFinal.includes("mean_reversion_pur")
-    )
-  ) {
+  // 🔥 FIAT PUR: qualsevol acció genera senyal
+  if (accioFinal) {
     await generarSenyalLonesome(
       symbol,
       tsClosed,
@@ -168,7 +162,7 @@ export async function processSymbolFIAT(symbol, candles) {
       {
         ...canalReal,
         accio: accioFinal,
-        prev_accio: lastChannels[1]?.accio || "",   // 🔥 MODIFICACIÓ CORRECTA
+        prev_accio: lastChannels[1]?.accio || "",
         close: closedCandle.close,
         macd,
         atr
