@@ -31,8 +31,10 @@ export async function generarSenyalLonesome(
 
   const macdObj = canal?.macd || {};
   const atrVal = canal?.atr ?? null;
+
   const lastAccio = canal?.accio || "";
   const accio_extesa = canal?.accio_extesa || lastAccio;
+
   const impuls_real = canal?.impuls_real || false;
   const drifting_detectat = canal?.drifting_detectat || false;
 
@@ -183,7 +185,7 @@ export async function generarSenyalLonesome(
   // 4) SOROLL
   const noise = isNoise(slopeDir, canal.dev);
 
-  // 5) CAS FIAT
+  // 5) CAS FIAT PUR
   const lastAccioFIAT = canal?.accio || "";
   const prevAccioFIAT = canal?.prev_accio || "";
 
@@ -240,7 +242,7 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 7) TP/SL dual (futures + spot)
+  // 7) TP/SL dual
   const { tp, sl_futures, sl_spot } = calculateTpSl(
     cas,
     closedCandle,
