@@ -1,4 +1,4 @@
-// fitxer core/logic/cas_detection.js
+// core/logic/cas_detection.js
 
 import { isNoise } from "./noise_detection.js";
 
@@ -12,19 +12,22 @@ export function detectCas(prev, last, slopeDir, dev) {
   const prevIsBreakout = p.startsWith("breakout");
   const lastIsReingres = l.startsWith("reingres");
 
-  // IMPORTANT: breakoutAge ve de calcularAccioFIAT.js (memòria institucional)
+  // breakoutAge ve de calcularAccioFIAT.js (memòria institucional)
   const age = prev?.breakoutAge ?? null;
 
   // -------------------------------------------------------------
-  // PATCH INSTITUCIONAL — Reingrés immediat (1–2 veles)
+  // PATCH INSTITUCIONAL — Reingrés immediat encara que age sigui null
   // -------------------------------------------------------------
-
-  // CAS 2 — breakout + reingrés immediat (age 0–2)
-  if (prevIsBreakout && lastIsReingres && age !== null && age <= 2) {
+  // Si la vela anterior és breakout i l'actual és reingrés → CAS 2
+  // Encara que age no existeixi (null), perquè és un reingrés immediat.
+  if (prevIsBreakout && lastIsReingres) {
     return 2;
   }
 
+  // -------------------------------------------------------------
   // CAS 3 — reingrés immediat tardà (age 1–2)
+  // Només s'activa si age existeix
+  // -------------------------------------------------------------
   if (!prevIsBreakout && lastIsReingres && age !== null && age <= 2) {
     return 3;
   }
