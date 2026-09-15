@@ -29,7 +29,6 @@ export async function generarSenyalLonesome(
   const timestamp_es = timestamp;
   const entry = closedCandle.close;
 
-  // extres FIAT: MACD, ATR, mean‑reversion, drifting, impuls real
   const macdObj = canal?.macd || {};
   const atrVal = canal?.atr ?? null;
   const lastAccio = canal?.accio || "";
@@ -37,9 +36,7 @@ export async function generarSenyalLonesome(
   const impuls_real = canal?.impuls_real || false;
   const drifting_detectat = canal?.drifting_detectat || false;
 
-  // -------------------------------------------------------------
   // 0) CANAL NO OPERABLE
-  // -------------------------------------------------------------
   if (!canal || canal.operable === false) {
     const alerta = `Canal no operable (operable=false, reason=${canal?.reason || "null"})`;
 
@@ -74,9 +71,7 @@ export async function generarSenyalLonesome(
 
   const side = getSideFromAccio(lastAccio);
 
-  // -------------------------------------------------------------
   // 1) BREAKOUT FIAT PUR
-  // -------------------------------------------------------------
   if (lastAccio.includes("breakout")) {
     const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
@@ -109,9 +104,7 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // -------------------------------------------------------------
   // 2) ACCIÓ BUIDA
-  // -------------------------------------------------------------
   if (lastAccio === "") {
     const alerta = `Acció buida (accio="")`;
 
@@ -144,22 +137,16 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // -------------------------------------------------------------
   // 3) SLOPE
-  // -------------------------------------------------------------
   const { dir: slopeDir, arrow } = classifySlope(
     canal.slope,
     prevCandle.slope ?? canal.slope
   );
 
-  // -------------------------------------------------------------
   // 4) SOROLL
-  // -------------------------------------------------------------
   const noise = isNoise(slopeDir, canal.dev);
 
-  // -------------------------------------------------------------
   // 5) CAS
-  // -------------------------------------------------------------
   const cas = detectCas(
     { accio: lastAccio, breakoutAge: null },
     { accio: lastAccio, breakoutAge: null },
@@ -167,11 +154,8 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
-  // -------------------------------------------------------------
   // 6) DECISIÓ D’ENTRADA
-  // -------------------------------------------------------------
   const entra = shouldEnter(cas);
-
   const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
 
   if (!entra) {
@@ -215,9 +199,7 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // -------------------------------------------------------------
   // 7) TP/SL
-  // -------------------------------------------------------------
   const { tp, sl, rr } = calculateTpSl(cas, closedCandle, slopeDir);
 
   if (tp == null || sl == null) {
@@ -252,9 +234,7 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // -------------------------------------------------------------
   // 8) ALERTA FINAL
-  // -------------------------------------------------------------
   const alerta = buildAlert({
     slope: canal.slope,
     slopeDir,
@@ -268,9 +248,7 @@ export async function generarSenyalLonesome(
     sl
   });
 
-  // -------------------------------------------------------------
   // 9) SENYAL FINAL
-  // -------------------------------------------------------------
   await insertSignal({
     symbol,
     type: "TRADE",
