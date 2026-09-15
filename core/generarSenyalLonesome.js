@@ -188,6 +188,18 @@ export async function generarSenyalLonesome(
   );
 
   // 6) DECISIÓ D’ENTRADA
+  // ACCIÓ FIAT ACTUAL I ANTERIOR
+  const lastAccioFIAT = canal?.accio || "";
+  const prevAccioFIAT = canal?.prev_accio || canalsRecents?.[1]?.accio || "";
+
+  // CAS FIAT
+  const cas = detectCas(
+    { accio: prevAccioFIAT, breakoutAge: null },
+    { accio: lastAccioFIAT, breakoutAge: null },
+    slopeDir,
+    canal.dev
+  );
+
   const entra = shouldEnter(cas);
   const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
 
