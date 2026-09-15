@@ -104,15 +104,15 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 1.5) WICK TEST — avís institucional
+  // 1.5) WICK TEST
   if (lastAccio.includes("wick_test")) {
     const alerta = `WICK TEST: mètxa ha punxat el canal sense trencar (close=${fmt(entry, symbol)})`;
 
     await insertSignal({
       symbol,
-      type: "RAW",          // 🔥 NO és discarded
+      type: "RAW",
       stage: "wick_test",
-      side: null,           // no és entrada
+      side: null,
       entry,
       tp: null,
       sl: null,
@@ -179,15 +179,10 @@ export async function generarSenyalLonesome(
   // 4) SOROLL
   const noise = isNoise(slopeDir, canal.dev);
 
-  // 5) CAS
- 
-
-  // 6) DECISIÓ D’ENTRADA
-  // ACCIÓ FIAT ACTUAL I ANTERIOR
+  // 5) CAS FIAT — CRIDA CORRECTA
   const lastAccioFIAT = canal?.accio || "";
-  const prevAccioFIAT = canal?.prev_accio || canalsRecents?.[1]?.accio || "";
+  const prevAccioFIAT = canal?.prev_accio || "";
 
-  // CAS FIAT
   const cas = detectCas(
     { accio: prevAccioFIAT, breakoutAge: null },
     { accio: lastAccioFIAT, breakoutAge: null },
@@ -195,6 +190,7 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
+  // 6) DECISIÓ D’ENTRADA
   const entra = shouldEnter(cas);
   const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
 
@@ -227,7 +223,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: motiu,
       alerta,
-      prevAccio: null,
+      prevAccio: prevAccioFIAT,
       macd: macdObj.macd ?? null,
       macd_signal: macdObj.signal ?? null,
       macd_hist: macdObj.hist ?? null,
@@ -262,7 +258,7 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "tp_sl_invalid",
       alerta,
-      prevAccio: null,
+      prevAccio: prevAccioFIAT,
       macd: macdObj.macd ?? null,
       macd_signal: macdObj.signal ?? null,
       macd_hist: macdObj.hist ?? null,
@@ -281,7 +277,7 @@ export async function generarSenyalLonesome(
     arrow,
     dev: canal.dev,
     isNoise: noise,
-    prevAccio: null,
+    prevAccio: prevAccioFIAT,
     lastAccio,
     cas,
     tp,
@@ -306,7 +302,7 @@ export async function generarSenyalLonesome(
     rr,
     reason: "entrada_valida",
     alerta,
-    prevAccio: null,
+    prevAccio: prevAccioFIAT,
     macd: macdObj.macd ?? null,
     macd_signal: macdObj.signal ?? null,
     macd_hist: macdObj.hist ?? null,
