@@ -138,9 +138,16 @@ function renderActiveSignalsTable(signals) {
       <tr>
         <td>${s.id}</td>
         <td>${s.symbol}</td>
+
         <td>${fmt(s.entry, s.symbol)}</td>
         <td>${s.tp != null ? fmt(s.tp, s.symbol) : "-"}</td>
+
+        <!-- SL FUTURES -->
         <td>${s.sl != null ? fmt(s.sl, s.symbol) : "-"}</td>
+
+        <!-- SL SPOT -->
+        <td>${s.sl_spot != null ? fmt(s.sl_spot, s.symbol) : "-"}</td>
+
         <td>${s.alerta || "-"}</td>
         <td>${s.date_es}</td>
         <td>${s.hora_es}</td>
@@ -157,7 +164,8 @@ function renderActiveSignalsTable(signals) {
           <th>Symbol</th>
           <th>Entrada</th>
           <th>TP</th>
-          <th>SL</th>
+          <th>SL Futures</th>
+          <th>SL Spot</th>
           <th>Alerta</th>
           <th>Data</th>
           <th>Hora</th>
@@ -170,8 +178,6 @@ function renderActiveSignalsTable(signals) {
   `;
 }
 
-
-
 // -------------------------------------------------------------
 // PANELL PRINCIPAL FIAT + LONESOME PUR
 // -------------------------------------------------------------
@@ -180,9 +186,6 @@ async function startPanel() {
 
   http.createServer(async (req, res) => {
 
-    // ---------------------------------------------------------
-    // PANELL HTML
-    // ---------------------------------------------------------
     if (req.url === "/") {
       const signals = await getActiveSignals();
       const channels = await getChannels();
