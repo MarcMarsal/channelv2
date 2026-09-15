@@ -180,12 +180,7 @@ export async function generarSenyalLonesome(
   const noise = isNoise(slopeDir, canal.dev);
 
   // 5) CAS
-  const cas = detectCas(
-    { accio: lastAccio, breakoutAge: null },
-    { accio: lastAccio, breakoutAge: null },
-    slopeDir,
-    canal.dev
-  );
+ 
 
   // 6) DECISIÓ D’ENTRADA
   // ACCIÓ FIAT ACTUAL I ANTERIOR
