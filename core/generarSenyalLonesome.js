@@ -29,6 +29,14 @@ export async function generarSenyalLonesome(
   const timestamp_es = timestamp;
   const entry = closedCandle.close;
 
+  // extres FIAT: MACD, ATR, mean‑reversion, drifting, impuls real
+  const macdObj = canal?.macd || {};
+  const atrVal = canal?.atr ?? null;
+  const lastAccio = canal?.accio || "";
+  const accio_extesa = canal?.accio_extesa || lastAccio;
+  const impuls_real = canal?.impuls_real || false;
+  const drifting_detectat = canal?.drifting_detectat || false;
+
   // -------------------------------------------------------------
   // 0) CANAL NO OPERABLE
   // -------------------------------------------------------------
@@ -52,20 +60,24 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "canal_no_operable",
       alerta,
-      prevAccio: null
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
     });
     return;
   }
 
-  const lastAccio = canal.accio || "";
   const side = getSideFromAccio(lastAccio);
 
   // -------------------------------------------------------------
   // 1) BREAKOUT FIAT PUR
   // -------------------------------------------------------------
   if (lastAccio.includes("breakout")) {
-    //  const alerta = `Breakout detectat (close=${entry}, canal=[${canal.lower}, ${canal.upper}])`;
-  
     const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
     await insertSignal({
@@ -85,7 +97,14 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "breakout",
       alerta,
-      prevAccio: null
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
     });
     return;
   }
@@ -113,7 +132,14 @@ export async function generarSenyalLonesome(
       rr: null,
       reason: "accio_buida",
       alerta,
-      prevAccio: null
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
     });
     return;
   }
@@ -141,52 +167,53 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
-// -------------------------------------------------------------
-// 6) DECISIÓ D’ENTRADA
-// -------------------------------------------------------------
-const entra = shouldEnter(cas);
+  // -------------------------------------------------------------
+  // 6) DECISIÓ D’ENTRADA
+  // -------------------------------------------------------------
+  const entra = shouldEnter(cas);
 
-// Calculem amplada relativa FIAT
-const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
+  const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
 
-if (!entra) {
-  let motiu = `CAS_${cas}_no_entra`;
-  let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
+  if (!entra) {
+    let motiu = `CAS_${cas}_no_entra`;
+    let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
 
-  // CANAL MASSA ESTRET (FIAT PUR)
-  if (amplada_relativa < 0.003) {
-    motiu = "canal_massa_estret";
-    alerta = `NO ENTRA: canal massa estret (amplada_relativa=${amplada_relativa.toFixed(4)} < 0.003)`;
+    if (amplada_relativa < 0.003) {
+      motiu = "canal_massa_estret";
+      alerta = `NO ENTRA: canal massa estret (amplada_relativa=${amplada_relativa.toFixed(4)} < 0.003)`;
+    } else if (amplada_relativa > 0.06) {
+      motiu = "canal_massa_ample";
+      alerta = `NO ENTRA: canal massa ample (amplada_relativa=${amplada_relativa.toFixed(4)} > 0.06)`;
+    }
+
+    await insertSignal({
+      symbol,
+      type: "DISCARDED",
+      stage: "evaluation",
+      side,
+      entry,
+      tp: null,
+      sl: null,
+      timestamp,
+      date_es,
+      hora_es,
+      timestamp_es,
+      canal,
+      cas,
+      rr: null,
+      reason: motiu,
+      alerta,
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
+    });
+    return;
   }
-
-  // CANAL MASSA AMPLE (FIAT PUR)
-  else if (amplada_relativa > 0.06) {
-    motiu = "canal_massa_ample";
-    alerta = `NO ENTRA: canal massa ample (amplada_relativa=${amplada_relativa.toFixed(4)} > 0.06)`;
-  }
-
-  await insertSignal({
-    symbol,
-    type: "DISCARDED",
-    stage: "evaluation",
-    side,
-    entry,
-    tp: null,
-    sl: null,
-    timestamp,
-    date_es,
-    hora_es,
-    timestamp_es,
-    canal,
-    cas,
-    rr: null,
-    reason: motiu,
-    alerta,
-    prevAccio: null
-  });
-  return;
-}
-
 
   // -------------------------------------------------------------
   // 7) TP/SL
@@ -213,7 +240,14 @@ if (!entra) {
       rr: null,
       reason: "tp_sl_invalid",
       alerta,
-      prevAccio: null
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
     });
     return;
   }
@@ -254,6 +288,13 @@ if (!entra) {
     rr,
     reason: "entrada_valida",
     alerta,
-    prevAccio: null
+    prevAccio: null,
+    macd: macdObj.macd ?? null,
+    macd_signal: macdObj.signal ?? null,
+    macd_hist: macdObj.hist ?? null,
+    atr: atrVal,
+    accio_extesa,
+    impuls_real,
+    drifting_detectat
   });
 }
