@@ -104,6 +104,39 @@ export async function generarSenyalLonesome(
     return;
   }
 
+  // 1.5) WICK TEST — avís institucional
+  if (lastAccio.includes("wick_test")) {
+    const alerta = `WICK TEST: mètxa ha punxat el canal sense trencar (close=${fmt(entry, symbol)})`;
+
+    await insertSignal({
+      symbol,
+      type: "RAW",          // 🔥 NO és discarded
+      stage: "wick_test",
+      side: null,           // no és entrada
+      entry,
+      tp: null,
+      sl: null,
+      timestamp,
+      date_es,
+      hora_es,
+      timestamp_es,
+      canal,
+      cas: null,
+      rr: null,
+      reason: "wick_test",
+      alerta,
+      prevAccio: null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
+    });
+    return;
+  }
+
   // 2) ACCIÓ BUIDA
   if (lastAccio === "") {
     const alerta = `Acció buida (accio="")`;
