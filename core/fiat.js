@@ -1,4 +1,4 @@
-// core/fiat.js — FIAT PUR breakout + reingrés + mean-reversion pur
+// core/fiat.js — FIAT PUR breakout + reingrés + mean-reversion pur + wick-test
 
 // -------------------------------------------------------------
 // BREAKOUT FIAT PUR
@@ -30,6 +30,26 @@ export function detectarReingresFIAT(canalCongelat, prevClose, close) {
 
   if (prevClose > uc && close <= uc) return "reingres_superior";
   if (prevClose < lc && close >= lc) return "reingres_inferior";
+
+  return "";
+}
+
+
+// -------------------------------------------------------------
+// WICK TEST — mètxa surt del canal però el close NO trenca
+// -------------------------------------------------------------
+export function detectarWickTest(c0, closedCandle) {
+  const { high, low, close } = closedCandle;
+
+  // Test superior: mètxa surt per dalt, però el close queda dins
+  if (high > c0.upper && close < c0.upper) {
+    return "wick_test_superior";
+  }
+
+  // Test inferior: mètxa surt per baix, però el close queda dins
+  if (low < c0.lower && close > c0.lower) {
+    return "wick_test_inferior";
+  }
 
   return "";
 }
@@ -107,7 +127,7 @@ export function detectarMeanReversionPur(lastChannels, closedCandle, macd, atr) 
 
 
 // -------------------------------------------------------------
-// Funció principal FIAT PUR + mean‑reversion pur
+// Funció principal FIAT PUR + mean‑reversion pur + wick-test
 // -------------------------------------------------------------
 export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
   if (!lastChannels || lastChannels.length < 2) return "";
@@ -135,6 +155,10 @@ export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
     const reingres = detectarReingresFIAT(canalCongelat, prevClose, close);
     if (reingres) return reingres;
   }
+
+  // 2.5) WICK TEST (avís institucional)
+  const wick = detectarWickTest(c0, closedCandle);
+  if (wick) return wick;
 
   // 3) MEAN‑REVERSION PUR
   const mrp = detectarMeanReversionPur(lastChannels, closedCandle, macd, atr);
