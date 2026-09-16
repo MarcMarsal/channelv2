@@ -8,8 +8,8 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
   const lower = canal.lower;
   const dev   = canal.dev ?? 0;
 
-  // 🔥 FIAT PUR: acció extesa és la que marca reingrés, reentrada, impuls...
-  const accio = closedCandle.accio_extesa || closedCandle.accio || "";
+  // 🔥 FIAT PUR: acció extesa ve del CANAL, no de la vela
+  const accio = canal.accio_extesa || canal.accio || "";
 
   let tp         = null;
   let sl_futures = null;
@@ -30,16 +30,17 @@ export function calculateTpSl(cas, closedCandle, slopeDir, canal) {
 
   // BREAKOUT FIAT PUR
   if (accio.startsWith("breakout")) {
-    tp = accio === "breakout_superior"
+    tp = accio.includes("superior")
       ? lower
       : upper;
 
     sl_futures = mid;
 
-    sl_spot = accio === "breakout_superior"
+    sl_spot = accio.includes("superior")
       ? mid + dev
       : mid - dev;
   }
 
   return { tp, sl_futures, sl_spot };
 }
+
