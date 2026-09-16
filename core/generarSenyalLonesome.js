@@ -74,7 +74,7 @@ export async function generarSenyalLonesome(
 
   const side = getSideFromAccio(lastAccio);
 
-  // 1) BREAKOUT FIAT PUR
+  // 1) BREAKOUT FIAT PUR (metxa/cos) → informatiu
   if (lastAccio.includes("breakout")) {
     const alerta = `Breakout detectat (close=${fmt(entry, symbol)}, lower,upper=[${fmt(canal.lower, symbol)}, ${fmt(canal.upper, symbol)}])`;
 
@@ -108,14 +108,14 @@ export async function generarSenyalLonesome(
     return;
   }
 
-  // 1.5) WICK TEST → RAW
-  if (lastAccio.includes("wick_test")) {
-    const alerta = `WICK TEST: mètxa ha punxat el canal sense trencar (close=${fmt(entry, symbol)})`;
+  // 1.5) DRIFTING → RAW informatiu
+  if (lastAccio.includes("drifting")) {
+    const alerta = `DRIFTING: rang enganxat amb cos petit (close=${fmt(entry, symbol)})`;
 
     await insertSignal({
       symbol,
       type: "RAW",
-      stage: "wick_test",
+      stage: "drifting",
       side: null,
       entry,
       tp: null,
@@ -128,7 +128,7 @@ export async function generarSenyalLonesome(
       canal,
       cas: null,
       rr: null,
-      reason: "wick_test",
+      reason: "drifting",
       alerta,
       prevAccio: canal.prev_accio || null,
       macd: macdObj.macd ?? null,
@@ -176,6 +176,40 @@ export async function generarSenyalLonesome(
     return;
   }
 
+  // 2.5) NOMÉS REINGRÉS POT OBRIR TRADE
+  if (!lastAccio.includes("reingres")) {
+    const alerta = `Acció no operable per trade (accio=${lastAccio})`;
+
+    await insertSignal({
+      symbol,
+      type: "DISCARDED",
+      stage: "evaluation",
+      side,
+      entry,
+      tp: null,
+      sl_futures: null,
+      sl_spot: null,
+      timestamp,
+      date_es,
+      hora_es,
+      timestamp_es,
+      canal,
+      cas: null,
+      rr: null,
+      reason: "accio_no_reingres",
+      alerta,
+      prevAccio: canal.prev_accio || null,
+      macd: macdObj.macd ?? null,
+      macd_signal: macdObj.signal ?? null,
+      macd_hist: macdObj.hist ?? null,
+      atr: atrVal,
+      accio_extesa,
+      impuls_real,
+      drifting_detectat
+    });
+    return;
+  }
+
   // 3) SLOPE
   const { dir: slopeDir, arrow } = classifySlope(
     canal.slope,
@@ -196,21 +230,11 @@ export async function generarSenyalLonesome(
     canal.dev
   );
 
-  // 6) DECISIÓ D’ENTRADA
-  //const entra = shouldEnter(cas);
-  //const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
+  // 6) DECISIÓ D’ENTRADA (de moment, sempre entra si és reingrés)
   const entra = true;
   if (!entra) {
-    let motiu = `CAS_${cas}_no_entra`;
-    let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
-
-    if (amplada_relativa < 0.003) {
-      motiu = "canal_massa_estret";
-      alerta = `NO ENTRA: canal massa estret (amplada_relativa=${amplada_relativa.toFixed(4)} < 0.003)`;
-    } else if (amplada_relativa > 0.06) {
-      motiu = "canal_massa_ample";
-      alerta = `NO ENTRA: canal massa ample (amplada_relativa=${amplada_relativa.toFixed(4)} > 0.06)`;
-    }
+    const motiu = `CAS_${cas}_no_entra`;
+    const alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
 
     await insertSignal({
       symbol,
