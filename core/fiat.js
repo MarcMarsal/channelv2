@@ -80,21 +80,17 @@ export function detectarDrifting(c0, closedCandle) {
 
 
 // -------------------------------------------------------------
-// Funció principal FIAT PUR — circuit únic breakout + reingrés + drifting
+// Funció principal FIAT PUR — PRIORITAT CORRECTA
 // -------------------------------------------------------------
 export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
   if (!lastChannels || lastChannels.length < 2) return "";
 
-  const [c0, c1] = lastChannels;
+  const [c0] = lastChannels;
 
   const close     = closedCandle.close;
   const prevClose = closedCandle.prev_close;
 
-  // 1) BREAKOUT (metxa o cos)
-  const breakout = detectarBreakoutFIAT(c0, closedCandle);
-  if (breakout) return breakout;
-
-  // 2) REINGRÉS (igual que fins ara)
+  // 1) REINGRÉS (PRIORITAT MÀXIMA)
   let canalBreakout = null;
 
   for (const ch of lastChannels.slice(0, 3)) {
@@ -108,6 +104,10 @@ export function calcularAccioFI(lastChannels, closedCandle, macd, atr) {
     const reingres = detectarReingresFIAT(canalBreakout, prevClose, close);
     if (reingres) return reingres;
   }
+
+  // 2) BREAKOUT (metxa o cos)
+  const breakout = detectarBreakoutFIAT(c0, closedCandle);
+  if (breakout) return breakout;
 
   // 3) DRIFTING (informatiu)
   const drifting = detectarDrifting(c0, closedCandle);
