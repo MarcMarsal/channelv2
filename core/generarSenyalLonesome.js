@@ -197,9 +197,9 @@ export async function generarSenyalLonesome(
   );
 
   // 6) DECISIÓ D’ENTRADA
-  const entra = shouldEnter(cas);
-  const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
-
+  //const entra = shouldEnter(cas);
+  //const amplada_relativa = (canal.upper - canal.lower) / canal.mid;
+  const entra = true;
   if (!entra) {
     let motiu = `CAS_${cas}_no_entra`;
     let alerta = `NO ENTRA: CAS_${cas}_no_entra (cas=${cas})`;
