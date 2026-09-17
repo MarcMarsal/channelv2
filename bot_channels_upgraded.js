@@ -12,7 +12,7 @@ const ACTIVE_CRYPTOS = [
   "APT-USDT","ARB-USDT","ATOM-USDT","AVAX-USDT","BNB-USDT",
   "BTC-USDT","ETH-USDT","FET-USDT","INJ-USDT","LINK-USDT",
   "NEAR-USDT","ONDO-USDT","OP-USDT","RENDER-USDT","SEI-USDT",
-  "SOL-USDT","SUI-USDT"
+  "SOL-USDT","SUI-USDT","XRP-USDT"
 ];
 
 async function getCandlesFromDB(symbol, timeframe, limit = 200) {
