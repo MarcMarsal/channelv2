@@ -71,3 +71,4 @@ export const DECIMALS = {
 export function fmt(n, symbol) {
   const d = DECIMALS[symbol] ?? 4;
   return Number(n).toFixed(d);
+}
