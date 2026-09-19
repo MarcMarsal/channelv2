@@ -3,7 +3,7 @@
 import cron from "node-cron";
 import { initDB } from "../../db/client.js";
 import { fetchAndStoreCandles } from "./fetchAndStore.js";
-import { UNIVERSE } from "./activeCryptos.js";
+import { UNIVERSE } from "../../core/activeCryptos.js";
 
 const TIMEFRAMES_DOWNLOAD = ["15m"];
 let isRunning = false;
